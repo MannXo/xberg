@@ -261,7 +261,8 @@ jobs:
         uses: xberg-io/actions/check-registry@v1
         with:
           registry: nuget
-          package: Xberg
+          # Must match <PackageId> in packages/csharp/Xberg/Xberg.csproj. ~keep
+          package: XbergIo.Xberg
           version: ${{ needs.prepare.outputs.version }}
 
   check-packagist:
@@ -276,7 +277,8 @@ jobs:
         uses: xberg-io/actions/check-registry@v1
         with:
           registry: packagist
-          package: xberg/xberg
+          # Must match the "name" in the root composer.json. ~keep
+          package: xberg-io/xberg
           version: ${{ needs.prepare.outputs.version }}
 
   check-cratesio:

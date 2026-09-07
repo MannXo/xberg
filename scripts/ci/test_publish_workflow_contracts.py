@@ -315,7 +315,11 @@ def test_glibc_ffi_jobs_build_lzma_statically() -> None:
         "c-ffi-libraries": "xberg-io/actions/build-rust-ffi@v1",
         "java-natives": "xberg-io/actions/build-java-natives@v1",
         "csharp-natives": "xberg-io/actions/build-csharp-natives@v1",
-        "elixir-natives": "xberg-io/actions/build-elixir-natives@v1",
+        # elixir-natives is deliberately absent: its linux-gnu legs moved to
+        # elixir-natives-manylinux, which builds inside a manylinux_2_28 container where
+        # liblzma comes from the base image and vendor-native-closure.sh bundles it. The
+        # remaining macos/windows legs are not glibc targets, so there is no
+        # LZMA_API_STATIC step for this contract to find.
         "dart-server-natives": "- name: Build Dart server native",
     }
     workflow = WORKFLOW.read_text()

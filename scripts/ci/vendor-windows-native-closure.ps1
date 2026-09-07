@@ -89,3 +89,11 @@ try {
 finally {
   if (Test-Path $workDir) { Remove-Item -Recurse -Force $workDir }
 }
+
+# The .zip branch above repacks with Compress-Archive and runs no native command, so this script
+# can return without ever setting $LASTEXITCODE. Callers in publish.yaml gate on it, and an unset
+# $LASTEXITCODE compares as `$null -ne 0` -> true, so every Windows PHP archive threw immediately
+# after being vendored and repacked successfully -- which is why v1.1.0 and v1.1.1 shipped no PHP
+# assets (xberg-io/xberg#1585). Sibling scripts vendor-windows-wheel-closure.ps1 and
+# verify-windows-dll-closure.ps1 already set this contract explicitly; this one was missed. ~keep
+exit 0

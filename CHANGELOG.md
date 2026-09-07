@@ -66,9 +66,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Functionaliteit—12` into `Functionaliteit-12` and a part code `HRE - HReco` into `HRe-HReco`.
   It is now applied only to columns whose data cells are predominantly numeric
   ([#1582](https://github.com/xberg-io/xberg/issues/1582)).
-- Fixed PHP PIE archives being withheld from a GitHub Release whenever a single leg of the
-  `php` x platform build matrix failed, so one unrelated transient failure suppressed all twelve
-  archives ([#1585](https://github.com/xberg-io/xberg/issues/1585)).
+- Fixed the Windows PHP extension archives failing to publish at all. `vendor-windows-native-closure.ps1`
+  repacks a `.zip` with `Compress-Archive`, which runs no native command and so never sets
+  `$LASTEXITCODE`; the release workflow gated on it, and an unset `$LASTEXITCODE` compares as
+  non-zero, so every Windows archive was rejected immediately after being vendored successfully.
+  Combined with an all-or-nothing matrix gate that withheld the release's PHP assets whenever any
+  single leg failed, this left v1.1.0 and v1.1.1 with no PHP binaries at all. Both are fixed: the
+  script now sets its exit contract explicitly, matching its sibling scripts, and the upload job
+  now ships the archives from the legs that succeeded
+  ([#1585](https://github.com/xberg-io/xberg/issues/1585)).
 
 ## [1.1.1] - 2026-09-07
 

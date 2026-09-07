@@ -1035,6 +1035,7 @@ impl OcrConfig {
     #[cfg(any(
         feature = "ocr",
         feature = "ocr-wasm",
+        feature = "ocr-pipeline",
         paddle_ocr,
         all(feature = "liter-llm", not(target_arch = "wasm32")),
     ))]
@@ -1050,6 +1051,33 @@ impl OcrConfig {
             vec![DEFAULT_OCR_LANGUAGE.to_string()]
         } else {
             langs
+        }
+    }
+
+    /// Resolve the language Tesseract should use, reconciling [`Self::language`] with
+    /// `tesseract_config.language` (#1572).
+    ///
+    /// Both fields default to `["eng"]`, so neither can represent "unset" on its own. An
+    /// explicit (non-default) [`Self::language`] always wins, matching the convention already
+    /// used to decide whether to propagate a language into a synthesised pipeline stage (see
+    /// [`Self::effective_pipeline`]). Otherwise a non-empty `tesseract_config.language` wins,
+    /// so a caller who only configures `TesseractConfig` still gets their language. Both
+    /// native (`ocr::tesseract_backend`) and WASM (`ocr::tesseract_wasm_backend`) Tesseract
+    /// backends call this so they agree on which field wins.
+    #[cfg(any(
+        feature = "ocr",
+        feature = "ocr-wasm",
+        feature = "ocr-pipeline",
+        paddle_ocr,
+        all(feature = "liter-llm", not(target_arch = "wasm32")),
+    ))]
+    pub(crate) fn effective_tesseract_language(&self) -> Vec<String> {
+        if self.language != [DEFAULT_OCR_LANGUAGE.to_string()] {
+            return self.effective_languages();
+        }
+        match &self.tesseract_config {
+            Some(tess) if !tess.language.is_empty() => tess.language.clone(),
+            _ => self.effective_languages(),
         }
     }
 

@@ -174,6 +174,7 @@ pub(crate) async fn extract_mixed_ocr_native(
             layout_config.as_ref(),
             layout_thread_budget,
             security_limits,
+            config.images.as_ref(),
         )
         .await
         {
@@ -339,6 +340,7 @@ pub(crate) async fn extract_mixed_ocr_native(
             &page_rotations,
             &page_indices[batch_start..batch_end],
             security_limits,
+            config.images.as_ref(),
         )?;
 
         // Multi-stage pipeline route (#1341): drive each page through `run_ocr_pipeline`
@@ -1278,12 +1280,33 @@ pub(super) async fn extract_with_ocr_for_page(
         } else {
             vec![result.content.clone()]
         };
+        // #1575: this route returns `None` for the structured document, so a backend
+        // warning (e.g. a document-processing capability notice) had nowhere to land and
+        // was silently dropped. Only builds a document when there is a warning to carry --
+        // `None` otherwise, matching this branch's pre-#1575 output byte-for-byte. Restricted
+        // to the single-page case: `select_pdf_document`'s `ExtractionMethod::Ocr` arm uses
+        // `ocr_doc` verbatim as *the* document when it is `Some`, and for `page_texts.len() >
+        // 1` a document built from `result.content` alone would not reflect this route's own
+        // per-page split (`page_texts`, above) -- risking a content regression worse than the
+        // warning loss this fixes. `None` still falls through to the caller's own
+        // `flat_pdf_document(text, ..)`, built from the correctly page-joined `text`, so the
+        // warning is the only thing still missing for a multi-page document-level result.
+        #[cfg(feature = "pdf")]
+        let ocr_doc = if result.processing_warnings.is_empty() || page_texts.len() > 1 {
+            None
+        } else {
+            let mut doc = super::document::flat_ocr_page_document(&result.content);
+            doc.processing_warnings = result.processing_warnings.clone();
+            Some(doc)
+        };
+        #[cfg(not(feature = "pdf"))]
+        let ocr_doc = None;
         return Ok((
             result.content,
             mean_conf,
             Vec::new(),
             ocr_elements,
-            None,
+            ocr_doc,
             llm_usage,
             page_texts,
             None,
@@ -1416,6 +1439,18 @@ pub(super) async fn extract_with_ocr_for_page(
     #[cfg(feature = "pdf")]
     let mut margin_filter_warnings: Vec<crate::types::ProcessingWarning> = Vec::new();
 
+    // #1575: the per-page backend result's own warnings (e.g. Tesseract's dictionary-filter
+    // removal notice) and its `additional` metadata (psm, language, dict-invalid ratio) were
+    // read for local bookkeeping but never forwarded to the caller -- unlike
+    // `extract_mixed_ocr_native`, which already merges both via `dedup_extend_warnings`
+    // (pipeline.rs:719-723). Collected here and folded into the returned document below,
+    // mirroring that sibling route. Metadata is captured once, from the first page whose
+    // backend result carries any -- psm/language are constant for the whole OCR run, and a
+    // single representative page is a strict improvement over reporting none at all. ~keep
+    let mut backend_page_warnings: Vec<crate::types::ProcessingWarning> = Vec::new();
+    let mut backend_additional_metadata: Option<ahash::AHashMap<std::borrow::Cow<'static, str>, serde_json::Value>> =
+        None;
+
     // Opened on first blank page only; see `fallback_render_document`.
     #[cfg(feature = "pdf")]
     let mut fallback_pdf_state: Option<Option<xberg_native_pdf::PdfDocument>> = None;
@@ -1508,7 +1543,13 @@ pub(super) async fn extract_with_ocr_for_page(
                         })?;
                 let default_security_limits = crate::extractors::security::SecurityLimits::default();
                 let security_limits = config.security_limits.as_ref().unwrap_or(&default_security_limits);
-                render_full_pdf_ocr_batch(doc, page_rotations, batch_start..batch_end, security_limits)?
+                render_full_pdf_ocr_batch(
+                    doc,
+                    page_rotations,
+                    batch_start..batch_end,
+                    security_limits,
+                    config.images.as_ref(),
+                )?
             };
             #[cfg(not(feature = "pdf"))]
             let encoded: Vec<(usize, Arc<Vec<u8>>, u32, u32)> = Vec::new();
@@ -1665,6 +1706,16 @@ pub(super) async fn extract_with_ocr_for_page(
             if let Some(metadata) = ocr_result.metadata.image_preprocessing.clone() {
                 preprocessing_by_page.insert(document_page_number, metadata);
             }
+            // #1575: capture once, from the first page that has any -- see this function's
+            // `backend_additional_metadata` declaration for why a single representative page
+            // is the right granularity here.
+            if backend_additional_metadata.is_none() && !ocr_result.metadata.additional.is_empty() {
+                backend_additional_metadata = Some(ocr_result.metadata.additional.clone());
+            }
+            crate::core::diagnostics::dedup_extend_warnings(
+                &mut backend_page_warnings,
+                std::mem::take(&mut ocr_result.processing_warnings),
+            );
             #[cfg(feature = "pdf")]
             {
                 let (correction_degrees, upright_width, upright_height) = batch_upright_correction[offset];
@@ -1962,6 +2013,18 @@ pub(super) async fn extract_with_ocr_for_page(
                             page_margins,
                         );
                         margin_filter_complete = !outcome.missing_geometry;
+                        // #1574: `page_margins` is now non-zero only when the caller set
+                        // `top_margin_fraction`/`bottom_margin_fraction` explicitly (defaults
+                        // resolve to 0.0, so this branch cannot fire on a default config). A
+                        // successful removal here is therefore the caller's own documented
+                        // filter working as configured -- the native-PDF span filter
+                        // (`extraction.rs`'s use of the same `PageMarginFractions`) emits no
+                        // warning for the identical case, and `diagnostics.rs`'s house rule is
+                        // to stay silent for a deliberate, documented filter unless the caller
+                        // could plausibly believe the content was extracted. It was not: the
+                        // caller asked for it to be removed. `outcome.missing_geometry` (the
+                        // capability gap where the filter could NOT run) is the one case that
+                        // still warns, below. ~keep
                         if outcome.removed {
                             margin_filtered_content = Some(ocr_paragraphs_plain_text(&paragraphs));
                         }
@@ -2274,12 +2337,26 @@ pub(super) async fn extract_with_ocr_for_page(
         warnings.extend(recognition_noise_warnings);
         warnings.extend(page_failure_warnings);
         warnings.extend(margin_filter_warnings);
-        attach_ocr_fallback_warnings(ocr_doc, &result, warnings)
+        warnings.extend(backend_page_warnings);
+        let mut ocr_doc = attach_ocr_fallback_warnings(ocr_doc, &result, warnings);
+        // #1575: only merged when a document already exists (or the warnings step above just
+        // built one from `text`) -- forcing an empty document into existence here for the sole
+        // purpose of carrying metadata would replace `select_pdf_document`'s `flat_pdf_document`
+        // fallback with an empty one, silently deleting the page text it currently preserves.
+        if let (Some(doc), Some(additional)) = (ocr_doc.as_mut(), backend_additional_metadata) {
+            doc.metadata.additional.extend(additional);
+        }
+        ocr_doc
     };
     // Without `pdf` there is no page renderer, so no page-level OCR runs and the vector is
     // always empty; bind it so the non-pdf build does not warn about an unused value.
     #[cfg(not(feature = "pdf"))]
-    let _ = (recognition_noise_warnings, page_failure_warnings);
+    let _ = (
+        recognition_noise_warnings,
+        page_failure_warnings,
+        backend_page_warnings,
+        backend_additional_metadata,
+    );
 
     Ok((
         result,

@@ -2615,6 +2615,7 @@ mod tests {
 
     #[cfg(feature = "ocr")]
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_process_document_propagation() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -2710,6 +2711,7 @@ mod tests {
     /// under `SecurityLimits::default()` regardless of what the caller configured.
     #[cfg(feature = "ocr")]
     #[tokio::test]
+    #[serial_test::serial]
     async fn extraction_config_security_limits_reach_scanned_page_ocr_config() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -2915,7 +2917,9 @@ mod tests {
     #[cfg(feature = "ocr")]
     #[test]
     fn should_use_per_page_ocr_only_when_effective_margins_are_nonzero() {
-        assert!(!should_use_document_processing(
+        // #1574: default margins are now 0.0/0.0, so a default-config document takes
+        // the whole-document route again, matching pre-1.1.0 behaviour. ~keep
+        assert!(should_use_document_processing(
             true,
             true,
             crate::pdf::native::text::PageMarginFractions::default(),
@@ -2924,6 +2928,11 @@ mod tests {
             true,
             true,
             crate::pdf::native::text::PageMarginFractions { top: 0.0, bottom: 0.0 },
+        ));
+        assert!(!should_use_document_processing(
+            true,
+            true,
+            crate::pdf::native::text::PageMarginFractions { top: 0.06, bottom: 0.0 },
         ));
         assert!(!should_use_document_processing(
             true,
@@ -2936,6 +2945,7 @@ mod tests {
     /// accumulated per-page and returned from `extract_with_ocr`.
     #[cfg(feature = "ocr")]
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_llm_usage_propagated_through_extract_with_ocr() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -3353,6 +3363,7 @@ Buffers:           50000 kB
             &page_rotations,
             0..1,
             &crate::extractors::security::SecurityLimits::default(),
+            None,
         )
         .unwrap();
         assert_eq!(first_batch.len(), 1);
@@ -3364,6 +3375,7 @@ Buffers:           50000 kB
             &page_rotations,
             0..1,
             &crate::extractors::security::SecurityLimits::default(),
+            None,
         )
         .unwrap();
         assert_eq!(second_batch.len(), 1);
@@ -3450,6 +3462,7 @@ Buffers:           50000 kB
     /// raw backend text with no leaked "PAGE 1" marker from the nested call.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn mixed_ocr_later_page_pipeline_route_does_not_leak_page_one_marker() {
         use crate::core::config::{OcrConfig, OcrPipelineConfig, OcrPipelineStage, PageConfig};
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -3560,6 +3573,7 @@ Buffers:           50000 kB
 
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn mixed_pipeline_later_page_warning_uses_document_page_number() {
         use crate::core::config::{OcrConfig, OcrPipelineConfig, OcrPipelineStage, OcrQualityThresholds};
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -3913,6 +3927,128 @@ Buffers:           50000 kB
         );
     }
 
+    /// #1575: a rendered PDF page's own OCR backend warnings (e.g. Tesseract's
+    /// dictionary-filter removal notice) and its `additional` metadata (psm, language) reached
+    /// the caller for a standalone image (`extractors::image`, which assigns the whole OCR
+    /// result's metadata onto the document) but were silently dropped for the same page
+    /// rendered from a PDF: `extract_with_ocr_for_page` read `mean_text_conf` and a word count
+    /// off `ocr_result.metadata.additional` and discarded everything else, and never read
+    /// `ocr_result.processing_warnings` at all. This proves both now survive to the returned
+    /// document with their exact content, not merely that a vector is non-empty.
+    #[cfg(feature = "ocr")]
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn extract_with_ocr_for_page_surfaces_backend_warnings_and_metadata() {
+        use crate::core::config::OcrConfig;
+        use crate::plugins::{ConfidenceSemantics, OcrBackend, OcrBackendType, Plugin};
+        use crate::types::{ExtractedDocument, Metadata, ProcessingWarning};
+        use std::sync::Arc;
+
+        const BACKEND_NAME: &str = "warning-metadata-passthrough-test-backend";
+        const WARNING_MESSAGE: &str =
+            "Tesseract removed 1 OCR line(s) because their dictionary-check ratio exceeded 0.60.";
+
+        struct WarningMetadataBackend;
+
+        #[async_trait::async_trait]
+        impl OcrBackend for WarningMetadataBackend {
+            fn backend_type(&self) -> OcrBackendType {
+                OcrBackendType::Custom
+            }
+            fn supports_language(&self, _: &str) -> bool {
+                true
+            }
+            async fn process_image(&self, _: &[u8], _: &OcrConfig) -> crate::Result<ExtractedDocument> {
+                let mut additional = ahash::AHashMap::new();
+                additional.insert(Cow::Borrowed("psm"), serde_json::json!("11"));
+                additional.insert(Cow::Borrowed("language"), serde_json::json!("eng"));
+                Ok(ExtractedDocument {
+                    content: "Follow-up actions:".to_string(),
+                    metadata: Metadata {
+                        additional,
+                        ..Default::default()
+                    },
+                    processing_warnings: vec![ProcessingWarning {
+                        source: Cow::Borrowed("tesseract"),
+                        message: Cow::Borrowed(WARNING_MESSAGE),
+                    }],
+                    ..Default::default()
+                })
+            }
+            fn confidence_semantics(&self) -> ConfidenceSemantics {
+                ConfidenceSemantics::Uncalibrated
+            }
+        }
+
+        impl Plugin for WarningMetadataBackend {
+            fn name(&self) -> &str {
+                BACKEND_NAME
+            }
+            fn version(&self) -> String {
+                "1.0.0".to_string()
+            }
+            fn initialize(&self) -> crate::Result<()> {
+                Ok(())
+            }
+            fn shutdown(&self) -> crate::Result<()> {
+                Ok(())
+            }
+        }
+
+        crate::plugins::register_ocr_backend(Arc::new(WarningMetadataBackend)).unwrap();
+
+        let config = ExtractionConfig {
+            ocr: Some(OcrConfig {
+                backend: BACKEND_NAME.to_string(),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let images = [image::DynamicImage::new_rgb8(100, 100)];
+        let result = extract_with_ocr_for_page(
+            None,
+            Some(&images),
+            #[cfg(feature = "layout-detection")]
+            None,
+            &config,
+            None,
+            0,
+            false,
+            None,
+            0,
+        )
+        .await
+        .unwrap();
+
+        crate::plugins::unregister_ocr_backend(BACKEND_NAME).unwrap();
+
+        let doc = result
+            .4
+            .expect("a backend warning must force a document into existence");
+        assert_eq!(
+            doc.processing_warnings.len(),
+            1,
+            "expected exactly the backend's own warning, got: {:?}",
+            doc.processing_warnings
+        );
+        assert_eq!(doc.processing_warnings[0].source, "tesseract");
+        assert_eq!(doc.processing_warnings[0].message, WARNING_MESSAGE);
+
+        assert_eq!(
+            doc.metadata.additional.get("psm"),
+            Some(&serde_json::json!("11")),
+            "psm must reach the caller: {:?}",
+            doc.metadata.additional
+        );
+        assert_eq!(
+            doc.metadata.additional.get("language"),
+            Some(&serde_json::json!("eng")),
+            "language must reach the caller: {:?}",
+            doc.metadata.additional
+        );
+    }
+
     /// A sibling test (or a real caller) invoking the public `clear_ocr_backends()` API empties
     /// the process-global OCR registry, including the built-in `tesseract` backend. Generated
     /// language-binding e2e suites exercise exactly this: a backend-management test calls the
@@ -3990,6 +4126,7 @@ Buffers:           50000 kB
     /// text must replace the blank result.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_recover_blank_pipeline_page_and_warn_when_embedded_image_exists() {
         use crate::core::config::{OcrConfig, OcrPipelineConfig, OcrPipelineStage, OcrQualityThresholds};
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -4134,6 +4271,7 @@ Buffers:           50000 kB
     /// guard is a no-op in that case.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_not_warn_or_fabricate_content_when_blank_pipeline_page_has_no_embedded_images() {
         use crate::core::config::{OcrConfig, OcrPipelineConfig, OcrPipelineStage, OcrQualityThresholds};
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -4231,6 +4369,7 @@ Buffers:           50000 kB
     /// that must never be skipped, independent of whether any text was recovered.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_warn_when_pipeline_fallback_ocr_recovers_nothing() {
         use crate::core::config::{OcrConfig, OcrPipelineConfig, OcrPipelineStage, OcrQualityThresholds};
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -4345,6 +4484,7 @@ Buffers:           50000 kB
     /// accumulation pattern works correctly end-to-end.
     #[cfg(feature = "ocr")]
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_formulas_accumulated_and_renumbered_per_page() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -6133,6 +6273,7 @@ Name: ___
     /// instead of carrying `{"page_rotation_degrees": 270}` for a `/Rotate 270` page.
     #[cfg(feature = "pdf")]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_thread_page_rotation_hint_through_the_images_driven_ocr_route() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -6245,6 +6386,7 @@ Name: ___
     /// asserted below.
     #[cfg(feature = "pdf")]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_send_an_upright_raster_to_a_requires_upright_backend_on_a_rotated_page() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, PageOrientationHandling, Plugin};
@@ -6347,6 +6489,7 @@ Name: ___
     /// this test exists so that cannot happen without failing here first.
     #[cfg(feature = "pdf")]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_leave_a_self_correcting_backends_raster_byte_for_byte_unchanged() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, PageOrientationHandling, Plugin};
@@ -6409,6 +6552,7 @@ Name: ___
             &expected_rotations,
             0..1,
             &crate::extractors::security::SecurityLimits::default(),
+            None,
         )
         .expect("fixture page must render");
         let (_, expected_bytes, _, _) = expected_encoded.into_iter().next().expect("page 0 must render");
@@ -6520,6 +6664,7 @@ Name: ___
     /// no `page_rotation_degrees` in `backend_options`, so both assertions below fail.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn mixed_ocr_pipeline_route_threads_page_rotation_to_a_requires_upright_backend() {
         use crate::core::config::{OcrConfig, OcrPipelineConfig, OcrPipelineStage, OcrQualityThresholds};
         use crate::plugins::{OcrBackend, OcrBackendType, PageOrientationHandling, Plugin};
@@ -6989,6 +7134,7 @@ Name: ___
     /// `Heading`.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn mixed_ocr_single_backend_route_promotes_document_global_headings() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -7130,6 +7276,7 @@ Name: ___
     /// the single-backend route above.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn mixed_ocr_pipeline_route_promotes_document_global_headings() {
         use crate::core::config::{OcrConfig, OcrPipelineConfig, OcrPipelineStage, OcrQualityThresholds};
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -7675,6 +7822,7 @@ Name: ___
     /// The page must now degrade into that fallback, and the failure must still be visible.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_recover_page_from_image_xobjects_when_the_backend_errors_on_the_page_raster() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -7787,6 +7935,7 @@ Name: ___
     /// XObject is what actually carries the text.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_recover_blank_inked_page_when_backend_describes_blankness_over_prerendered_images() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -7881,6 +8030,7 @@ Name: ___
     /// recovery, which must run and must succeed.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_recover_from_image_xobjects_when_every_pipeline_stage_fails() {
         use crate::core::config::{OcrConfig, OcrPipelineConfig, OcrPipelineStage};
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
@@ -8003,6 +8153,7 @@ Name: ___
     /// aggregate failure naming the page count, not as the raw first backend error.
     #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     #[tokio::test]
+    #[serial_test::serial]
     async fn should_error_when_every_page_fails_and_nothing_can_be_recovered() {
         use crate::core::config::OcrConfig;
         use crate::plugins::{OcrBackend, OcrBackendType, Plugin};

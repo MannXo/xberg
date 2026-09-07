@@ -68,6 +68,53 @@ fn calculate_dimension_constrained_dpi(
     }
 }
 
+/// Default PDF page render DPI when the caller supplies no `ImageExtractionConfig`.
+///
+/// Deliberately the historical literal `150`, not `ImageDpiConfig::default().target_dpi` (300).
+/// Rendering natively at 300 would be defensible -- the downstream normalization step already
+/// upscales 150 -> 300 before OCR, so true detail would replace interpolation at the same final
+/// pixel count -- but it quadruples the peak render allocation, changes OCR output for every
+/// existing caller, and was observed to trip `SecurityLimits` on a page that renders fine today.
+/// #1577 asks only that a *configured* `target_dpi` stop being ignored; raising the default is a
+/// separate quality change that needs an A/B before it ships. ~keep
+#[cfg(feature = "pdf")]
+pub(crate) const DEFAULT_PDF_RENDER_DPI: i32 = 150;
+
+/// Resolve the DPI to render a PDF page at for OCR (#1577), honoring `ImageExtractionConfig`'s
+/// `target_dpi`, `min_dpi`, `max_dpi`, `max_image_dimension`, and `auto_adjust_dpi`.
+///
+/// Without an `ImageExtractionConfig` this resolves to [`DEFAULT_PDF_RENDER_DPI`]. With one,
+/// `target_dpi` is clamped to `[min_dpi, max_dpi]`; when `auto_adjust_dpi` is also set, the
+/// clamped target is further reduced (never raised) to keep the render within
+/// `max_image_dimension` pixels on its longest side, via the same
+/// [`calculate_dimension_constrained_dpi`] helper the standalone-image path uses. Downstream,
+/// `render::choose_safe_dpi` still applies its own absolute rasterizer pixel ceiling
+/// regardless of what this returns, so a caller cannot push a render past that safety limit
+/// through this function alone. ~keep
+#[cfg(feature = "pdf")]
+pub(crate) fn effective_pdf_render_dpi(
+    images_config: Option<&crate::core::config::ImageExtractionConfig>,
+    page_width_pt: f64,
+    page_height_pt: f64,
+) -> i32 {
+    let Some(images_config) = images_config else {
+        return DEFAULT_PDF_RENDER_DPI;
+    };
+    let clamped_target = images_config
+        .target_dpi
+        .clamp(images_config.min_dpi, images_config.max_dpi);
+    if !images_config.auto_adjust_dpi {
+        return clamped_target;
+    }
+    let dimension_constrained = calculate_dimension_constrained_dpi(
+        page_width_pt / PDF_POINTS_PER_INCH,
+        page_height_pt / PDF_POINTS_PER_INCH,
+        clamped_target,
+        images_config.max_image_dimension,
+    );
+    dimension_constrained.clamp(images_config.min_dpi, images_config.max_dpi)
+}
+
 /// Calculate optimal DPI with min/max constraints
 #[cfg(test)]
 pub(crate) fn calculate_optimal_dpi(
@@ -161,5 +208,78 @@ mod tests {
 
         assert!(wide_dpi >= 72);
         assert!(tall_dpi >= 72);
+    }
+
+    /// #1577: without an `ImageExtractionConfig`, PDF page render stays at the historical
+    /// default. The bug is a *configured* DPI being ignored, not the default being wrong, so
+    /// this pins the default against an accidental change.
+    #[cfg(feature = "pdf")]
+    #[test]
+    fn effective_pdf_render_dpi_without_config_is_the_default() {
+        assert_eq!(effective_pdf_render_dpi(None, 612.0, 792.0), DEFAULT_PDF_RENDER_DPI);
+        assert_eq!(DEFAULT_PDF_RENDER_DPI, 150);
+    }
+
+    /// A caller's `target_dpi` reaches the render step verbatim when it fits inside
+    /// `[min_dpi, max_dpi]` and `auto_adjust_dpi` is off (#1577's exact repro: `target_dpi=600`
+    /// on a Letter page must not stay pinned at whatever the render historically used).
+    #[cfg(feature = "pdf")]
+    #[test]
+    fn effective_pdf_render_dpi_honours_target_dpi_without_auto_adjust() {
+        let images_config = crate::core::config::ImageExtractionConfig {
+            target_dpi: 600,
+            auto_adjust_dpi: false,
+            min_dpi: 72,
+            max_dpi: 600,
+            ..Default::default()
+        };
+        assert_eq!(effective_pdf_render_dpi(Some(&images_config), 612.0, 792.0), 600);
+    }
+
+    /// `target_dpi` is clamped into `[min_dpi, max_dpi]` before anything else, both when it
+    /// overshoots the ceiling and when it undershoots the floor.
+    #[cfg(feature = "pdf")]
+    #[test]
+    fn effective_pdf_render_dpi_clamps_target_dpi_to_min_max() {
+        let over_max = crate::core::config::ImageExtractionConfig {
+            target_dpi: 1200,
+            auto_adjust_dpi: false,
+            min_dpi: 72,
+            max_dpi: 600,
+            ..Default::default()
+        };
+        assert_eq!(effective_pdf_render_dpi(Some(&over_max), 612.0, 792.0), 600);
+
+        let under_min = crate::core::config::ImageExtractionConfig {
+            target_dpi: 50,
+            auto_adjust_dpi: false,
+            min_dpi: 72,
+            max_dpi: 600,
+            ..Default::default()
+        };
+        assert_eq!(effective_pdf_render_dpi(Some(&under_min), 612.0, 792.0), 72);
+    }
+
+    /// With `auto_adjust_dpi` on, a page whose `target_dpi` render would exceed
+    /// `max_image_dimension` on its longest side is reduced (never raised) to fit -- the same
+    /// dimension-constrained-DPI rule the standalone-image path applies, now reachable from a
+    /// rendered PDF page.
+    #[cfg(feature = "pdf")]
+    #[test]
+    fn effective_pdf_render_dpi_auto_adjusts_for_max_image_dimension() {
+        let images_config = crate::core::config::ImageExtractionConfig {
+            target_dpi: 600,
+            auto_adjust_dpi: true,
+            max_image_dimension: 2000,
+            min_dpi: 72,
+            max_dpi: 600,
+            ..Default::default()
+        };
+        // An 8.5x11in Letter page at 600 DPI is 5100x6600px, well past a 2000px cap; the
+        // long (11in) side must be the one that determines the reduced DPI:
+        // round(2000 / 11) = 182.
+        let dpi = effective_pdf_render_dpi(Some(&images_config), 612.0, 792.0);
+        assert_eq!(dpi, 182);
+        assert!(dpi < 600, "auto_adjust_dpi must reduce, not raise, an oversized target");
     }
 }

@@ -3288,8 +3288,9 @@ mod tests {
         assert!(metadata.dimension_clamped);
     }
 
-    /// Pixel width of a US Letter page (612pt wide) rendered at the 150 DPI the PDF OCR route
-    /// asks `render_page_with_safeguards` for.
+    /// Pixel width of a US Letter page (612pt wide) rendered at 150 DPI -- an arbitrary
+    /// non-72, non-target render resolution exercising `known_source_dpi`, not tied to
+    /// whatever DPI the PDF OCR route actually renders at (`effective_pdf_render_dpi`, #1577).
     const LETTER_AT_150_DPI_WIDTH_PX: u32 = 1275;
     /// Pixel height of the same page (792pt tall) at 150 DPI.
     const LETTER_AT_150_DPI_HEIGHT_PX: u32 = 1650;

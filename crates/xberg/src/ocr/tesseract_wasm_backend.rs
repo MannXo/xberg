@@ -135,7 +135,9 @@ impl OcrBackend for TesseractWasmBackend {
             });
         }
 
-        let languages = config.effective_languages();
+        // Reconciled with `tesseract_config.language` the same way the native backend does
+        // (#1572), so the two Tesseract backends agree on which field wins.
+        let languages = config.effective_tesseract_language();
         let language = languages[0].clone();
         if languages.len() > 1 {
             tracing::warn!(

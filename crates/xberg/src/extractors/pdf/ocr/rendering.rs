@@ -18,6 +18,7 @@ pub(crate) fn render_selected_pages_for_ocr(
         &page_rotations,
         &valid_indices,
         &crate::extractors::security::SecurityLimits::default(),
+        None,
     )
 }
 #[cfg(all(any(feature = "ocr", feature = "ocr-pipeline"), feature = "pdf"))]
@@ -168,6 +169,65 @@ mod png_encode_peak_tests {
         assert!(matches!(error, crate::XbergError::Validation { .. }));
     }
 }
+/// #1577: `render_full_pdf_ocr_batch` / `render_selected_pages_from_document` must render at
+/// the DPI `ImageExtractionConfig` requests, not the historical literal 150.
+#[cfg(all(test, any(feature = "ocr", feature = "ocr-pipeline"), feature = "pdf"))]
+mod render_dpi_tests {
+    use super::*;
+
+    /// Without an `ImageExtractionConfig`, a Letter page renders at the unchanged historical
+    /// default of 150 DPI: 8.5in * 150 = 1275px wide.
+    #[test]
+    fn render_full_pdf_ocr_batch_defaults_to_150_dpi_without_images_config() {
+        let pdf = crate::pdf::render::build_minimal_pdf_with_mediabox(612.0, 792.0);
+        let (doc, _page_count, page_rotations) = open_pdf_for_full_ocr(&pdf).unwrap();
+
+        let batch = render_full_pdf_ocr_batch(
+            &doc,
+            &page_rotations,
+            0..1,
+            &crate::extractors::security::SecurityLimits::default(),
+            None,
+        )
+        .expect("blank Letter page must render");
+
+        assert_eq!(batch.len(), 1);
+        let (_, _, width, height) = &batch[0];
+        assert_eq!(*width, 1275, "8.5in at 150 DPI is 1275px wide");
+        assert_eq!(*height, 1650, "11in at 150 DPI is 1650px tall");
+    }
+
+    /// The exact #1577 repro: `target_dpi=600` on the `ImageExtractionConfig` must actually
+    /// change the rendered pixel dimensions, not be silently ignored. Before the fix, this
+    /// page rendered identically regardless of `images_config`.
+    #[test]
+    fn render_full_pdf_ocr_batch_honours_configured_target_dpi() {
+        let pdf = crate::pdf::render::build_minimal_pdf_with_mediabox(612.0, 792.0);
+        let (doc, _page_count, page_rotations) = open_pdf_for_full_ocr(&pdf).unwrap();
+        let images_config = crate::core::config::ImageExtractionConfig {
+            target_dpi: 600,
+            auto_adjust_dpi: false,
+            min_dpi: 72,
+            max_dpi: 600,
+            ..Default::default()
+        };
+
+        let batch = render_full_pdf_ocr_batch(
+            &doc,
+            &page_rotations,
+            0..1,
+            &crate::extractors::security::SecurityLimits::default(),
+            Some(&images_config),
+        )
+        .expect("blank Letter page must render");
+
+        assert_eq!(batch.len(), 1);
+        let (_, _, width, height) = &batch[0];
+        assert_eq!(*width, 5100, "8.5in at 600 DPI is 5100px wide");
+        assert_eq!(*height, 6600, "11in at 600 DPI is 6600px tall");
+    }
+}
+
 #[cfg(all(any(feature = "ocr", feature = "ocr-pipeline"), feature = "pdf"))]
 pub(super) fn clone_rgb_for_png_encode(
     image: &image::DynamicImage,
@@ -455,15 +515,21 @@ pub(super) fn render_full_pdf_ocr_batch(
     page_rotations: &[u32],
     page_range: std::ops::Range<usize>,
     security_limits: &crate::extractors::security::SecurityLimits,
+    images_config: Option<&crate::core::config::ImageExtractionConfig>,
 ) -> crate::Result<Vec<EncodedPage>> {
     let mut encoded = Vec::with_capacity(page_range.len());
     for page_idx in page_range {
-        let rendered = crate::pdf::render::render_page_with_safeguards(doc, page_idx, 150).map_err(|e| {
-            crate::XbergError::Parsing {
+        let (page_width_pt, page_height_pt) = crate::pdf::render::get_page_dimensions_pt(doc, page_idx);
+        let render_dpi = crate::image::dpi::effective_pdf_render_dpi(
+            images_config,
+            f64::from(page_width_pt),
+            f64::from(page_height_pt),
+        );
+        let rendered = crate::pdf::render::render_page_with_safeguards(doc, page_idx, render_dpi.max(1) as u32)
+            .map_err(|e| crate::XbergError::Parsing {
                 message: format!("Failed to render page {} for OCR: {:?}", page_idx, e),
                 source: None,
-            }
-        })?;
+            })?;
         let rotation = page_rotations.get(page_idx).copied().unwrap_or(0);
         let (data, width, height) = crate::pdf::render::normalize_rendered_page_for_ocr_with_security_limits(
             rendered.data,
@@ -503,13 +569,22 @@ pub(super) fn render_selected_pages_from_document(
     page_rotations: &[u32],
     page_indices: &[usize],
     security_limits: &crate::extractors::security::SecurityLimits,
+    images_config: Option<&crate::core::config::ImageExtractionConfig>,
 ) -> crate::Result<Vec<(usize, image::DynamicImage)>> {
     let mut images = Vec::with_capacity(page_indices.len());
     for &idx in page_indices {
+        let (page_width_pt, page_height_pt) = crate::pdf::render::get_page_dimensions_pt(doc, idx);
+        let render_dpi = crate::image::dpi::effective_pdf_render_dpi(
+            images_config,
+            f64::from(page_width_pt),
+            f64::from(page_height_pt),
+        );
         let rendered =
-            crate::pdf::render::render_page_with_safeguards(doc, idx, 150).map_err(|e| crate::XbergError::Parsing {
-                message: format!("Failed to render PDF page {}: {}", idx + 1, e),
-                source: None,
+            crate::pdf::render::render_page_with_safeguards(doc, idx, render_dpi.max(1) as u32).map_err(|e| {
+                crate::XbergError::Parsing {
+                    message: format!("Failed to render PDF page {}: {}", idx + 1, e),
+                    source: None,
+                }
             })?;
         let rotation = page_rotations.get(idx).copied().unwrap_or(0);
         let (data, _, _) = crate::pdf::render::normalize_rendered_page_for_ocr_with_security_limits(

@@ -17,8 +17,13 @@ use xberg_native_pdf::document::ReadingOrder;
 /// Result type for PDF text extraction with optional page tracking.
 type PdfTextExtractionResult = (String, Option<Vec<PageBoundary>>, Option<Vec<PageContent>>);
 
-const DEFAULT_TOP_MARGIN_FRACTION: f32 = 0.06;
-const DEFAULT_BOTTOM_MARGIN_FRACTION: f32 = 0.05;
+// #1574: these were 0.06/0.05 through 1.1.0. `top_margin_fraction`/`bottom_margin_fraction`
+// went from a dead config knob (unread before commit ddba546dca5) to an active OCR-paragraph
+// filter in 1.1.0 without a changelog entry, so a default-config scan lost every page title
+// that happened to sit in the top 6% band with no warning at all. Restoring 0.0 makes the
+// filter opt-in: it now only runs when a caller sets a margin explicitly. ~keep
+const DEFAULT_TOP_MARGIN_FRACTION: f32 = 0.0;
+const DEFAULT_BOTTOM_MARGIN_FRACTION: f32 = 0.0;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PageMarginFractions {
@@ -1860,7 +1865,18 @@ mod tests {
         confined.rotation_degrees = 90.0;
 
         let mut spans = vec![stamp, confined];
-        retain_spans_inside_page_margins(&mut spans, 0.0, 792.0, PageMarginFractions::default());
+        // #1574: `PageMarginFractions::default()` is now 0.0/0.0 (opt-in filter), so this
+        // geometry test -- which is about the rotated-run advance, not about defaults --
+        // uses the pre-1574 default fractions explicitly. ~keep
+        retain_spans_inside_page_margins(
+            &mut spans,
+            0.0,
+            792.0,
+            PageMarginFractions {
+                top: 0.06,
+                bottom: 0.05,
+            },
+        );
 
         assert_eq!(
             spans.iter().map(|span| span.text.as_str()).collect::<Vec<_>>(),
@@ -1869,8 +1885,11 @@ mod tests {
         );
     }
 
+    /// #1574: default margins are 0.0, so `PageMarginFractions::default()` must not
+    /// remove anything -- the header and footer here would have been dropped by the
+    /// pre-fix 0.06/0.05 defaults. ~keep
     #[test]
-    fn should_resolve_default_margins_and_account_for_non_zero_page_origin() {
+    fn should_not_filter_by_default_margins() {
         let mut spans = vec![
             span("header", 20.0, 860.0, 10.0, 10.0),
             span("body", 20.0, 500.0, 10.0, 10.0),
@@ -1881,8 +1900,57 @@ mod tests {
 
         assert_eq!(
             spans.iter().map(|span| span.text.as_str()).collect::<Vec<_>>(),
+            ["header", "body", "footer"]
+        );
+    }
+
+    /// Same geometry as the removed default-margin case above, but with explicit
+    /// non-zero fractions -- keeps the non-zero-page-origin accounting under test now
+    /// that the defaults themselves resolve to 0.0.
+    #[test]
+    fn should_resolve_configured_margins_and_account_for_non_zero_page_origin() {
+        let mut spans = vec![
+            span("header", 20.0, 860.0, 10.0, 10.0),
+            span("body", 20.0, 500.0, 10.0, 10.0),
+            span("footer", 20.0, 130.0, 10.0, 10.0),
+        ];
+
+        retain_spans_inside_page_margins(
+            &mut spans,
+            100.0,
+            900.0,
+            PageMarginFractions {
+                top: 0.06,
+                bottom: 0.05,
+            },
+        );
+
+        assert_eq!(
+            spans.iter().map(|span| span.text.as_str()).collect::<Vec<_>>(),
             ["body"]
         );
+    }
+
+    /// #1574: a default-config document (`pdf_options: None`, and `Some(PdfConfig::default())`
+    /// with both margin fields `None`) must resolve to no filtering at all -- through 1.1.0 this
+    /// resolved to 0.06/0.05 and silently dropped a top-of-page title on every default scan.
+    #[test]
+    fn should_resolve_no_margins_for_a_default_config() {
+        let margins = PageMarginFractions::from_extraction_config(None);
+        assert_eq!(margins.top, 0.0);
+        assert_eq!(margins.bottom, 0.0);
+
+        let margins = PageMarginFractions::from_extraction_config(Some(&ExtractionConfig::default()));
+        assert_eq!(margins.top, 0.0);
+        assert_eq!(margins.bottom, 0.0);
+
+        let config = ExtractionConfig {
+            pdf_options: Some(crate::core::config::PdfConfig::default()),
+            ..ExtractionConfig::default()
+        };
+        let margins = PageMarginFractions::from_extraction_config(Some(&config));
+        assert_eq!(margins.top, 0.0);
+        assert_eq!(margins.bottom, 0.0);
     }
 
     #[test]

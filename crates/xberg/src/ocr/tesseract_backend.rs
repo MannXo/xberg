@@ -91,11 +91,13 @@ impl TesseractBackend {
     fn config_to_tesseract(&self, config: &OcrConfig) -> InternalTesseractConfig {
         let mut internal = match &config.tesseract_config {
             Some(tess_config) => InternalTesseractConfig::from(tess_config),
-            None => InternalTesseractConfig {
-                language: config.effective_languages().join("+"),
-                ..Default::default()
-            },
+            None => InternalTesseractConfig::default(),
         };
+        // `TesseractConfig::from` above takes its language from `tess_config.language`, which
+        // silently discards `OcrConfig.language` (#1572). Reconcile the two through the shared
+        // rule so an `OcrConfig(language=..., tesseract_config=...)` caller is not OCR'd in
+        // English regardless of which field they set.
+        internal.language = config.effective_tesseract_language().join("+");
         if internal.language.trim().is_empty() {
             internal.language = crate::core::config::ocr::DEFAULT_OCR_LANGUAGE.to_string();
         }
@@ -982,6 +984,43 @@ mod tests {
         assert_eq!(tess_config.language, "fra");
         assert_eq!(tess_config.psm, 6);
         assert!(tess_config.enable_table_detection);
+    }
+
+    /// #1572: supplying ANY `TesseractConfig` used to discard `OcrConfig.language` entirely,
+    /// because the `Some` arm read the public struct's own `language` field -- which defaults to
+    /// `["eng"]`, so a German document silently OCR'd in English. `["eng"]` is not empty, so the
+    /// existing empty-string guard never caught it. The neighbouring test above covers the
+    /// opposite precedence (an explicitly-set `tesseract_config.language` still wins); this one
+    /// pins the reported case, where only `OcrConfig.language` was set. ~keep
+    #[test]
+    fn config_to_tesseract_keeps_ocr_config_language_when_tesseract_config_is_default() {
+        let backend = TesseractBackend::new();
+        let ocr_config = OcrConfig {
+            backend: "tesseract".to_string(),
+            language: vec!["deu".to_string()],
+            tesseract_config: Some(crate::types::TesseractConfig::default()),
+            ..Default::default()
+        };
+
+        let tess_config = backend.config_to_tesseract(&ocr_config);
+        assert_eq!(
+            tess_config.language, "deu",
+            "OcrConfig.language must survive a default TesseractConfig"
+        );
+    }
+
+    /// #1572, multi-language form: the join must use the configured list, not fall back to "eng".
+    #[test]
+    fn config_to_tesseract_joins_multiple_ocr_config_languages_with_a_default_tesseract_config() {
+        let backend = TesseractBackend::new();
+        let ocr_config = OcrConfig {
+            backend: "tesseract".to_string(),
+            language: vec!["deu".to_string(), "fra".to_string()],
+            tesseract_config: Some(crate::types::TesseractConfig::default()),
+            ..Default::default()
+        };
+
+        assert_eq!(backend.config_to_tesseract(&ocr_config).language, "deu+fra");
     }
 
     /// The `source_dpi` hint the PDF OCR route stamps per page must survive the crossing into

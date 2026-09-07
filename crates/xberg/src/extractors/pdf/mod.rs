@@ -838,8 +838,14 @@ async fn run_ocr_with_layout(
             let thread_budget = crate::core::config::concurrency::resolve_thread_budget(config.concurrency.as_ref());
             let default_security_limits = crate::extractors::security::SecurityLimits::default();
             let security_limits = config.security_limits.as_ref().unwrap_or(&default_security_limits);
-            match layout_runner::run_layout_for_ocr(content, layout_config.as_ref(), thread_budget, security_limits)
-                .await
+            match layout_runner::run_layout_for_ocr(
+                content,
+                layout_config.as_ref(),
+                thread_budget,
+                security_limits,
+                config.images.as_ref(),
+            )
+            .await
             {
                 Ok((
                     layout_runner::LayoutAttempt {
@@ -2031,75 +2037,76 @@ impl PdfExtractor {
                     (native_text, ExtractionMethod::Native)
                 }
                 ocr::OcrGateOutcome::RunFallback => {
-                    let skip_fallback = config.images.as_ref().map(|i| i.run_ocr_on_images).unwrap_or(false);
-                    if skip_fallback {
-                        tracing::debug!("Skipping document-level OCR fallback: run_ocr_on_images=true");
-                        (native_text, ExtractionMethod::Native)
-                    } else {
-                        match run_ocr_with_layout(
-                            content,
-                            config,
-                            path,
-                            #[cfg(feature = "layout-detection")]
-                            markdown_layout_images.take(),
-                            #[cfg(feature = "layout-detection")]
-                            markdown_layout_detections.take(),
-                            #[cfg(feature = "layout-detection")]
-                            markdown_layout_acceleration_override.take(),
-                        )
-                        .await
-                        {
-                            Ok((
-                                ocr_text,
-                                ocr_tbls,
-                                ocr_elems,
-                                ocr_doc,
-                                llm_usage,
-                                ocr_pts,
-                                ocr_rstrs,
-                                formulas,
-                                preprocessing,
-                                page_ocr_confidence,
-                                gate_audit,
-                                layout_warning,
-                                layout_glyph_drop_warnings,
-                            )) => {
-                                if let Some(warning) = layout_warning {
-                                    crate::core::diagnostics::push_warning_deduped(&mut ocr_fallback_warnings, warning);
-                                }
-                                for warning in layout_glyph_drop_warnings {
-                                    crate::core::diagnostics::push_warning_deduped(&mut ocr_fallback_warnings, warning);
-                                }
-                                ocr_layout_gate_audit = gate_audit;
-                                ocr_tables = ocr_tbls;
-                                ocr_elements = ocr_elems;
-                                ocr_internal_doc = ocr_doc;
-                                ocr_llm_usage = llm_usage;
-                                ocr_page_texts = Some(ocr_pts);
-                                ocr_page_rasters = ocr_rstrs;
-                                ocr_formulas = formulas;
-                                ocr_preprocessing_by_page = preprocessing;
-                                ocr_confidence_by_page = page_ocr_confidence;
-                                (ocr_text, ExtractionMethod::Ocr)
+                    // `images.run_ocr_on_images` controls whether extracted images are
+                    // separately OCR'd (`core/pipeline/mod.rs`); it does not gate this
+                    // document-level page OCR fallback. Reading it here made any
+                    // `ImageExtractionConfig` (whose `run_ocr_on_images` defaults to `true`)
+                    // silently suppress page OCR on scanned PDFs, leaving `pages[].content`
+                    // empty (#1576). `RunFallbackOnPages` below has never read this field;
+                    // this now matches it. ~keep
+                    match run_ocr_with_layout(
+                        content,
+                        config,
+                        path,
+                        #[cfg(feature = "layout-detection")]
+                        markdown_layout_images.take(),
+                        #[cfg(feature = "layout-detection")]
+                        markdown_layout_detections.take(),
+                        #[cfg(feature = "layout-detection")]
+                        markdown_layout_acceleration_override.take(),
+                    )
+                    .await
+                    {
+                        Ok((
+                            ocr_text,
+                            ocr_tbls,
+                            ocr_elems,
+                            ocr_doc,
+                            llm_usage,
+                            ocr_pts,
+                            ocr_rstrs,
+                            formulas,
+                            preprocessing,
+                            page_ocr_confidence,
+                            gate_audit,
+                            layout_warning,
+                            layout_glyph_drop_warnings,
+                        )) => {
+                            if let Some(warning) = layout_warning {
+                                crate::core::diagnostics::push_warning_deduped(&mut ocr_fallback_warnings, warning);
                             }
-                            Err(e) => {
-                                tracing::warn!(
-                                    error = %e,
-                                    "OCR fallback failed; using native text extraction result"
-                                );
-                                if failed_ocr_fallback_is_total_loss(&native_text) {
-                                    return Err(e);
-                                }
-                                ocr_fallback_warnings.push(crate::types::ProcessingWarning {
-                                    source: std::borrow::Cow::Borrowed("ocr"),
-                                    message: std::borrow::Cow::Owned(format!(
-                                        "OCR fallback failed ({e}); returning native text that was below the \
+                            for warning in layout_glyph_drop_warnings {
+                                crate::core::diagnostics::push_warning_deduped(&mut ocr_fallback_warnings, warning);
+                            }
+                            ocr_layout_gate_audit = gate_audit;
+                            ocr_tables = ocr_tbls;
+                            ocr_elements = ocr_elems;
+                            ocr_internal_doc = ocr_doc;
+                            ocr_llm_usage = llm_usage;
+                            ocr_page_texts = Some(ocr_pts);
+                            ocr_page_rasters = ocr_rstrs;
+                            ocr_formulas = formulas;
+                            ocr_preprocessing_by_page = preprocessing;
+                            ocr_confidence_by_page = page_ocr_confidence;
+                            (ocr_text, ExtractionMethod::Ocr)
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                error = %e,
+                                "OCR fallback failed; using native text extraction result"
+                            );
+                            if failed_ocr_fallback_is_total_loss(&native_text) {
+                                return Err(e);
+                            }
+                            ocr_fallback_warnings.push(crate::types::ProcessingWarning {
+                                source: std::borrow::Cow::Borrowed("ocr"),
+                                message: std::borrow::Cow::Owned(format!(
+                                    "OCR fallback failed ({e}); returning native text that was below the \
                                          quality threshold which triggered OCR. Extracted content may be empty \
                                          or incomplete."
-                                    )),
-                                });
-                                (native_text, ExtractionMethod::Native)
-                            }
+                                )),
+                            });
+                            (native_text, ExtractionMethod::Native)
                         }
                     }
                 }
@@ -2348,6 +2355,14 @@ impl PdfExtractor {
         #[cfg(not(any(feature = "ocr", feature = "ocr-pipeline")))]
         let (mut doc, document_is_structured) =
             select_native_pdf_document(&text, mime_type, pre_rendered_doc, boundaries.as_deref());
+        // #1575: `doc.metadata` is fully replaced by a fresh `Metadata { .. }` literal below
+        // (native/mixed extraction never populates `doc.metadata` this early, so this is a
+        // no-op for them), which would otherwise discard the OCR pipeline's `psm`/`language`/
+        // `tesseract_dict_invalid_word_ratio` keys set on `ocr_internal_doc.metadata.additional`
+        // (`extract_with_ocr_for_page`) before they ever reached a caller. Taken here and
+        // merged back in after that literal is built. ~keep
+        #[cfg(any(feature = "ocr", feature = "ocr-pipeline"))]
+        let ocr_backend_additional_metadata = std::mem::take(&mut doc.metadata.additional);
         if let Some(annotation_text_fallback) = annotation_text_fallback.as_ref() {
             extraction::append_annotation_fallback_elements(annotation_text_fallback, &mut doc);
         }
@@ -2435,6 +2450,10 @@ impl PdfExtractor {
             std::borrow::Cow::Borrowed("extraction_method"),
             serde_json::Value::String(extraction_method.as_str().to_string()),
         );
+        // #1575: restore the OCR-pipeline keys taken above, now that the fresh `Metadata`
+        // literal they would otherwise have been lost to already exists.
+        #[cfg(any(feature = "ocr", feature = "ocr-pipeline"))]
+        doc.metadata.additional.extend(ocr_backend_additional_metadata);
 
         // Issue #66: `/PageLabels` — one display label per page, index-aligned
         // with `pdf_metadata.page_structure`/`PageBoundary::page_number`.
@@ -3170,6 +3189,42 @@ mod tests {
             1,
             "mixed OCR text must occur exactly once in {projection}: {haystack}"
         );
+    }
+
+    /// A single letter-sized page with an empty `Contents` stream -- no native text at all,
+    /// so the OCR fallback decision always flags it as a whole-document failure and the gate
+    /// deterministically returns `OcrGateOutcome::RunFallback`.
+    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    fn blank_letter_page_pdf() -> Vec<u8> {
+        use lopdf::{Document, Object, Stream, dictionary};
+
+        let mut document = Document::with_version("1.5");
+        let pages_id = document.new_object_id();
+        let content_id = document.add_object(Stream::new(dictionary! {}, Vec::new()));
+        let page_id = document.add_object(dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "MediaBox" => vec![0.into(), 0.into(), 612.into(), 792.into()],
+            "Resources" => dictionary! {},
+            "Contents" => content_id,
+        });
+        document.objects.insert(
+            pages_id,
+            Object::Dictionary(dictionary! {
+                "Type" => "Pages",
+                "Kids" => vec![page_id.into()],
+                "Count" => 1,
+            }),
+        );
+        let catalog_id = document.add_object(dictionary! {
+            "Type" => "Catalog",
+            "Pages" => pages_id,
+        });
+        document.trailer.set("Root", catalog_id);
+
+        let mut bytes = Vec::new();
+        document.save_to(&mut bytes).expect("fixture PDF must serialize");
+        bytes
     }
 
     #[cfg(all(feature = "pdf", feature = "ocr"))]
@@ -4996,6 +5051,193 @@ mod tests {
             );
 
             assert_eq!(extraction_method(&result), Some(ExtractionMethod::Ocr));
+        }
+    }
+
+    /// #1575: a backend warning and its `additional` metadata (psm/language) must survive the
+    /// whole `PdfExtractor::extract_content` call, not just `extract_with_ocr_for_page`'s own
+    /// return value. `doc.metadata` is fully replaced by a fresh `Metadata { .. }` literal
+    /// partway through this extractor (see the `#1575` comment above that assignment) --
+    /// without the take-then-restore fix there, this end-to-end test would see an empty
+    /// `metadata.additional` even though the lower-level pipeline test already passes.
+    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    struct WarningMetadataPdfOcrBackend {
+        name: &'static str,
+    }
+
+    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    impl crate::plugins::Plugin for WarningMetadataPdfOcrBackend {
+        fn name(&self) -> &str {
+            self.name
+        }
+        fn version(&self) -> String {
+            "1.0.0".to_string()
+        }
+        fn initialize(&self) -> crate::Result<()> {
+            Ok(())
+        }
+        fn shutdown(&self) -> crate::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    #[async_trait::async_trait]
+    impl crate::plugins::OcrBackend for WarningMetadataPdfOcrBackend {
+        fn backend_type(&self) -> crate::plugins::OcrBackendType {
+            crate::plugins::OcrBackendType::Custom
+        }
+        fn supports_language(&self, _lang: &str) -> bool {
+            true
+        }
+        async fn process_image(
+            &self,
+            _image_bytes: &[u8],
+            _config: &crate::core::config::OcrConfig,
+        ) -> crate::Result<crate::types::ExtractedDocument> {
+            let mut additional = ahash::AHashMap::new();
+            additional.insert(std::borrow::Cow::Borrowed("psm"), serde_json::json!("11"));
+            additional.insert(std::borrow::Cow::Borrowed("language"), serde_json::json!("eng"));
+            Ok(crate::types::ExtractedDocument {
+                content: "mock OCR text".to_string(),
+                metadata: crate::types::Metadata {
+                    additional,
+                    ..Default::default()
+                },
+                processing_warnings: vec![crate::types::ProcessingWarning {
+                    source: std::borrow::Cow::Borrowed("tesseract"),
+                    message: std::borrow::Cow::Borrowed(
+                        "Tesseract removed 1 OCR line(s) because their dictionary-check ratio exceeded 0.60.",
+                    ),
+                }],
+                ..Default::default()
+            })
+        }
+    }
+
+    #[tokio::test]
+    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    #[serial]
+    async fn test_pdf_ocr_route_surfaces_backend_warning_and_metadata() {
+        const BACKEND_NAME: &str = "pdf-warning-metadata-ocr";
+        crate::plugins::register_ocr_backend(std::sync::Arc::new(WarningMetadataPdfOcrBackend { name: BACKEND_NAME }))
+            .unwrap();
+        let _guard = RegisteredOcrBackendGuard { name: BACKEND_NAME };
+
+        let extractor = PdfExtractor::new();
+        let config = ExtractionConfig {
+            force_ocr: true,
+            ocr: Some(crate::core::config::OcrConfig {
+                backend: BACKEND_NAME.to_string(),
+                language: vec!["eng".to_string()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let pdf_path = pdf_test_document("multi_page.pdf");
+        let content = std::fs::read(pdf_path).expect("fixture must be present");
+
+        let result = extractor
+            .extract_content(&content, "application/pdf", &config)
+            .await
+            .expect("forced OCR extraction should succeed");
+
+        assert_eq!(
+            result.processing_warnings.len(),
+            1,
+            "expected exactly the backend's own warning: {:?}",
+            result.processing_warnings
+        );
+        assert_eq!(result.processing_warnings[0].source, "tesseract");
+        assert_eq!(
+            result.processing_warnings[0].message,
+            "Tesseract removed 1 OCR line(s) because their dictionary-check ratio exceeded 0.60."
+        );
+        assert_eq!(
+            result.metadata.additional.get("psm"),
+            Some(&serde_json::json!("11")),
+            "psm must survive the `doc.metadata = Metadata {{ .. }}` reassignment: {:?}",
+            result.metadata.additional
+        );
+        assert_eq!(
+            result.metadata.additional.get("language"),
+            Some(&serde_json::json!("eng")),
+            "language must survive the `doc.metadata = Metadata {{ .. }}` reassignment: {:?}",
+            result.metadata.additional
+        );
+    }
+
+    #[tokio::test]
+    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    #[serial]
+    /// #1576: any `ImageExtractionConfig` -- default fields included -- must not suppress
+    /// document-level page OCR on a scanned PDF. Before the fix, `ImageExtractionConfig::
+    /// default()` (`run_ocr_on_images: true`) left `pages[0].content` empty because the
+    /// `RunFallback` gate read `run_ocr_on_images` as "skip page OCR", even though that field
+    /// only controls whether separately extracted images get their own OCR pass. ~keep
+    async fn images_config_does_not_suppress_scanned_page_ocr() {
+        use crate::core::config::{ImageExtractionConfig, OcrConfig, PageConfig};
+
+        const BACKEND_NAME: &str = "pdf-1576-images-config-does-not-suppress-ocr";
+        const RECOVERED_TEXT: &str = "recovered scan text";
+        let _backend = register_mock_ocr_backend(BACKEND_NAME, RECOVERED_TEXT);
+        // A single blank page (no `Contents` text) has empty native text, which the OCR
+        // fallback decision (`ocr::scoring::OcrFallbackDecision`) always flags as a whole-
+        // document failure -- deterministically exercising `OcrGateOutcome::RunFallback`,
+        // unlike `force_ocr` which bypasses this gate entirely (see the comment on
+        // `failed_ocr_fallback_is_total_loss` above).
+        let content = blank_letter_page_pdf();
+
+        let base_config = ExtractionConfig {
+            use_cache: false,
+            ocr: Some(OcrConfig {
+                backend: BACKEND_NAME.to_string(),
+                language: vec!["eng".to_string()],
+                ..Default::default()
+            }),
+            pages: Some(PageConfig {
+                extract_pages: true,
+                insert_page_markers: false,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        for (label, images) in [
+            ("no images config", None),
+            (
+                "ImageExtractionConfig::default()",
+                Some(ImageExtractionConfig::default()),
+            ),
+        ] {
+            let config = ExtractionConfig {
+                images,
+                ..base_config.clone()
+            };
+            let internal = PdfExtractor::new()
+                .extract_content(&content, "application/pdf", &config)
+                .await
+                .unwrap_or_else(|e| panic!("{label}: scanned-page OCR extraction should succeed: {e}"));
+            let result = crate::extraction::derive::derive_extraction_result(
+                internal,
+                true,
+                crate::core::config::OutputFormat::Plain,
+            );
+            let pages = result
+                .pages
+                .as_ref()
+                .unwrap_or_else(|| panic!("{label}: pages must be present"));
+            assert!(!pages.is_empty(), "{label}: at least one page must be present");
+            assert!(
+                pages[0].content.contains(RECOVERED_TEXT),
+                "{label}: pages[0].content must carry the OCR text, got {:?}",
+                pages[0].content
+            );
+            assert_eq!(
+                extraction_method(&result),
+                Some(ExtractionMethod::Ocr),
+                "{label}: a fully scanned page must report ExtractionMethod::Ocr"
+            );
         }
     }
 

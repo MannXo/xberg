@@ -1094,9 +1094,10 @@ mod tests {
 
     /// The raster's own pixel width is the only honest record of the resolution a page was
     /// rendered at, because `render_page_with_safeguards` throws `choose_safe_dpi`'s effective
-    /// value away. A Letter page rendered at the OCR route's requested 150 DPI is 1275px wide,
-    /// and that must read back as 150 — not as the 72 the preprocessor assumes when nobody
-    /// tells it otherwise.
+    /// value away. A Letter page rendered at an arbitrary requested 150 DPI (any DPI works;
+    /// the actual default the PDF OCR route requests is `effective_pdf_render_dpi`, #1577) is
+    /// 1275px wide, and that must read back as 150 — not as the 72 the preprocessor assumes
+    /// when nobody tells it otherwise.
     #[cfg(any(feature = "ocr", feature = "ocr-pipeline"))]
     #[test]
     fn should_derive_render_dpi_from_raster_width_and_mediabox() {

@@ -2272,44 +2272,15 @@ mod data_base64_pass_tests {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn test_pdf_run_fallback_not_suppressed_without_images_config() {
-    use crate::core::config::ImageExtractionConfig;
-
-    let default_no_images = crate::core::config::ExtractionConfig::default();
-    assert!(
-        default_no_images.images.is_none(),
-        "baseline: default config has no images section"
-    );
-
-    let skip_fallback = default_no_images
-        .images
-        .as_ref()
-        .map(|i| i.run_ocr_on_images)
-        .unwrap_or(false);
-    assert!(
-        !skip_fallback,
-        "RunFallback must NOT be suppressed when config.images is None"
-    );
-
-    let with_images_opted_in = crate::core::config::ExtractionConfig {
-        images: Some(ImageExtractionConfig {
-            run_ocr_on_images: true,
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-    let skip_fallback_opted_in = with_images_opted_in
-        .images
-        .as_ref()
-        .map(|i| i.run_ocr_on_images)
-        .unwrap_or(false);
-    assert!(
-        skip_fallback_opted_in,
-        "RunFallback must be suppressed when images.run_ocr_on_images=true"
-    );
-}
+// #1576: `images.run_ocr_on_images` (per-extracted-image OCR) is a different setting from
+// document-level page OCR. A test here used to re-derive the buggy suppression logic inline
+// (`config.images.map(|i| i.run_ocr_on_images).unwrap_or(false)`) and assert that
+// `run_ocr_on_images=true` suppressed `RunFallback` -- that assertion WAS the bug, not the
+// contract. `extractors/pdf/mod.rs`'s `OcrGateOutcome::RunFallback` arm no longer reads
+// `config.images` at all, so there is nothing left to unit-test at that granularity; the
+// regression coverage is an end-to-end extraction in
+// `extractors::pdf::tests::images_config_does_not_suppress_scanned_page_ocr`. Left as a plain
+// comment, not a doc comment: it documents a removed test, not the module below it. ~keep
 
 mod document_counts {
     use super::super::populate_document_counts;

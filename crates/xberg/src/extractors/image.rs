@@ -1226,10 +1226,12 @@ fn apply_default_whole_image_tesseract_psm(config: &mut crate::core::config::Ocr
     apply_default_tesseract_psm(config, psm);
 }
 
+/// Checks the same reconciled language `config_to_tesseract` resolves (#1572), so a
+/// `jpn_vert` set only on `tesseract_config.language` still selects the vertical PSM.
 #[cfg(any(feature = "ocr", feature = "ocr-wasm", feature = "ocr-pipeline"))]
 fn has_vertical_tesseract_language(config: &crate::core::config::OcrConfig) -> bool {
     config
-        .language
+        .effective_tesseract_language()
         .iter()
         .flat_map(|language| language.split('+'))
         .any(|language| language.trim().to_ascii_lowercase().ends_with("_vert"))

@@ -96,7 +96,7 @@ pub struct PdfConfig {
     /// Ignored when `ContentFilterConfig.include_headers` is `true`.
     /// Effective nonzero margins require per-page OCR so geometry can be filtered;
     /// document-capable OCR backends use their image-processing path in that case.
-    /// Default: 0.06 (6%)
+    /// Default: 0.0 (disabled; set explicitly to filter header content)
     #[serde(default)]
     pub top_margin_fraction: Option<f32>,
 
@@ -104,7 +104,7 @@ pub struct PdfConfig {
     /// Ignored when `ContentFilterConfig.include_footers` is `true`.
     /// Effective nonzero margins require per-page OCR so geometry can be filtered;
     /// document-capable OCR backends use their image-processing path in that case.
-    /// Default: 0.05 (5%)
+    /// Default: 0.0 (disabled; set explicitly to filter footer content)
     #[serde(default)]
     pub bottom_margin_fraction: Option<f32>,
 

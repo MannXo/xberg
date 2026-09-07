@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-07
+
 > **This release contains a breaking public API change.** `OutputFormat::Structured` is renamed to
 > `OutputFormat::DocTags`. Update any config, CLI invocation, or binding call using
 > `output_format = "structured"` to `"doctags"`.
@@ -36,6 +38,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and left the Hex package at 1.0.14. The `linux-gnu` NIF is now built against the glibc 2.28 floor
   it claims to support; the artifacts published for 1.0.14 bundled HEIF codec libraries that
   required a newer glibc.
+- Fixed the Windows Hex package, which declared the `x86_64-pc-windows-gnu` target while CI built
+  and published `x86_64-pc-windows-msvc`. `RustlerPrecompiled` resolves the msvc triple on Windows
+  and rejects any triple the package does not declare, so `mix deps.get` failed with "precompiled
+  NIF is not available for this target" even though the artifact existed. Windows users had to
+  compile the NIF from source.
+
+### Security
+
+- The Linux binding images now verify a pinned SHA-256 for every vendored native dependency
+  (`libde265`, `libheif`, ONNX Runtime) before building it, instead of trusting the download. These
+  libraries are linked into the published Node and Elixir artifacts.
 
 ## [1.1.0] - 2026-09-06
 

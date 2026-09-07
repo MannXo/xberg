@@ -1,6 +1,6 @@
 {
   "name": "@xberg-io/xberg",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "High-performance document intelligence library",
   "license": "MIT",
   "repository": {
@@ -18,12 +18,12 @@
   },
   "files": ["index.js", "index.d.ts", "*.node"],
   "optionalDependencies": {
-    "@xberg-io/xberg-linux-x64-gnu": "1.1.0",
-    "@xberg-io/xberg-linux-arm64-gnu": "1.1.0",
-    "@xberg-io/xberg-linux-x64-musl": "1.1.0",
-    "@xberg-io/xberg-linux-arm64-musl": "1.1.0",
-    "@xberg-io/xberg-darwin-arm64": "1.1.0",
-    "@xberg-io/xberg-win32-x64-msvc": "1.1.0"
+    "@xberg-io/xberg-linux-x64-gnu": "1.1.1",
+    "@xberg-io/xberg-linux-arm64-gnu": "1.1.1",
+    "@xberg-io/xberg-linux-x64-musl": "1.1.1",
+    "@xberg-io/xberg-linux-arm64-musl": "1.1.1",
+    "@xberg-io/xberg-darwin-arm64": "1.1.1",
+    "@xberg-io/xberg-win32-x64-msvc": "1.1.1"
   },
   "napi": {
     "packageName": "@xberg-io/xberg",

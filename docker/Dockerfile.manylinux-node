@@ -23,21 +23,41 @@ RUN dnf -y module enable nodejs:20 && \
         cmake make pkgconfig git file curl \
         openssl-devel \
         libpng-devel libjpeg-turbo-devel libtiff-devel zlib-devel \
+        libaom-devel \
         nodejs npm && \
-    for codec in libdav1d-devel libde265-devel; do dnf -y install "$codec" || true; done && \
     dnf clean all
 
+# libde265 -- the HEIC decoder -- has NO EPEL 8 package on either arch, so the
+# previous `dnf install "$codec" || true` loop skipped it silently and libheif
+# came out reporting "HEIC: NO". Nothing read that cmake summary line, so the
+# build stayed green while the artifact could not decode a single .heic input.
+# Built from source here instead; the linkage is asserted after the libheif
+# build below rather than trusted. libaom DOES have an EPEL 8 package and
+# supplies AVIF decode. ~keep
 RUN cd /tmp && \
+    curl -fsSL -o libde265.tar.gz https://github.com/strukturag/libde265/releases/download/v1.1.2/libde265-1.1.2.tar.gz && \
+    tar -xzf libde265.tar.gz && \
+    cd libde265-1.1.2 && \
+    cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON -DENABLE_SDL=OFF && \
+    cmake --build build -j"$(nproc)" && \
+    cmake --install build && \
+    ldconfig && \
+    cd / && rm -rf /tmp/libde265*
+
+RUN cd /tmp && \
+    export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig && \
     curl -fsSL -o libheif.tar.gz https://github.com/strukturag/libheif/releases/download/v1.23.0/libheif-1.23.0.tar.gz && \
     tar -xzf libheif.tar.gz && \
     cd libheif-1.23.0 && \
     cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
         -DCMAKE_INSTALL_LIBDIR=lib -DWITH_EXAMPLES=OFF -DWITH_GDK_PIXBUF=OFF \
         -DBUILD_TESTING=OFF \
-        -DWITH_X265=OFF -DWITH_AOM_ENCODER=OFF -DWITH_AOM_DECODER=OFF && \
+        -DWITH_X265=OFF -DWITH_AOM_ENCODER=OFF -DWITH_AOM_DECODER=ON && \
     cmake --build build -j"$(nproc)" && \
     cmake --install build && \
     ldconfig && \
+    readelf -d /usr/local/lib/libheif.so.1 | grep -q libde265 && \
     cd / && rm -rf /tmp/libheif*
 
 RUN mkdir -p /build/onnxruntime && \

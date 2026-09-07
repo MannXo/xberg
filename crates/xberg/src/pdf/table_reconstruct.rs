@@ -424,6 +424,42 @@ fn min_columns_for(layout_guided: bool, allow_single_column: bool) -> usize {
     }
 }
 
+/// Whether `text` is a bare ordered/bulleted list marker: a run of digits or a single
+/// lowercase letter followed by `.` or `)` (`"1."`, `"12)"`, `"a."`, `"b)"`), or a lone
+/// bullet glyph (`•`, `-`, `–`, `*`). Hand-rolled rather than pulling in `regex` for three
+/// fixed shapes this small (xberg-io/xberg#1570).
+fn is_list_marker_cell(text: &str) -> bool {
+    let mut chars = text.chars();
+    match chars.next() {
+        Some(first) if first.is_ascii_digit() => {
+            let mut rest = chars.as_str();
+            while let Some(next_char) = rest.chars().next() {
+                if !next_char.is_ascii_digit() {
+                    break;
+                }
+                rest = &rest[next_char.len_utf8()..];
+            }
+            rest == "." || rest == ")"
+        }
+        Some(first) if first.is_ascii_lowercase() => {
+            let rest = chars.as_str();
+            rest == "." || rest == ")"
+        }
+        Some('•' | '-' | '–' | '*') => chars.as_str().is_empty(),
+        _ => false,
+    }
+}
+
+/// Whether every whitespace-separated token in `text` is a list marker. Column 0 of a
+/// reconstructed list region is not always one marker per cell: `merge_rows_columnwise`
+/// collapses a multi-row header into a single cell, so the header of a four-item list can
+/// read `"1. 2."`. Testing token-wise sees that as marker content while still rejecting a
+/// genuine header label like `"Line"` or `"Item #"` (xberg-io/xberg#1570). ~keep
+fn is_list_marker_content(text: &str) -> bool {
+    let mut tokens = text.split_whitespace().peekable();
+    tokens.peek().is_some() && tokens.all(is_list_marker_cell)
+}
+
 fn post_process_table_inner(
     mut table: Vec<Vec<String>>,
     min_columns: usize,
@@ -710,6 +746,36 @@ fn post_process_table_inner(
         }
     }
 
+    // A candidate whose column 0 is bare list markers ("1.", "a)", "•") end to end — the
+    // header row included — is an ordered/bulleted list, not a table: the marker is
+    // line-numbering supplied by the source layout, not a discrete data value
+    // (xberg-io/xberg#1570). Including row 0 is what separates the two lookalikes. A
+    // genuine numbered parts or invoice table carries a header label above its numbers
+    // ("Line", "#", "Item"), so its column 0 is not markers end to end and this guard
+    // leaves it alone; a fabricated list region has a list item in row 0 like every other
+    // row. Scoped to `!layout_guided`: a layout-guided region already has ML confirmation
+    // it is a real table, and both routes that produced the fabricated-table bug
+    // (Tesseract TSV clustering and PaddleOCR word clustering) call this validator with
+    // `layout_guided=false`. ~keep
+    if !layout_guided {
+        let all_col0: Vec<&str> = processed
+            .iter()
+            .filter_map(|row| row.first().map(|cell| cell.trim()))
+            .filter(|cell| !cell.is_empty())
+            .collect();
+        if !all_col0.is_empty() && all_col0.iter().all(|cell| is_list_marker_content(cell)) {
+            tracing::debug!(
+                target: "xberg::table_reconstruct",
+                reason = "list_marker_first_column",
+                marker_rows = all_col0.len(),
+                rows = processed.len(),
+                cols = processed[0].len(),
+                "post_process_table_inner: rejected table"
+            );
+            return None;
+        }
+    }
+
     let dense_numeric_grid = is_dense_numeric_grid(&processed);
 
     if processed[0].len() >= 5 {
@@ -752,6 +818,13 @@ fn post_process_table_inner(
     }
 
     if processed[0].len() >= 2 {
+        // The marker relaxation below applies only when column 0 has no header label of its
+        // own. A header cell like "Line" or "#" means the punctuated numbers beneath it are
+        // row-number *data* in a real table, not list markers (#1570). ~keep
+        let header_col0_is_marker = processed[0]
+            .first()
+            .map(|cell| cell.trim())
+            .is_some_and(is_list_marker_content);
         let mut flow_rows = 0usize;
         let mut eligible_rows = 0usize;
         for row in processed.iter().skip(1) {
@@ -761,10 +834,26 @@ fn post_process_table_inner(
                 continue;
             }
             eligible_rows += 1;
-            let ends_without_punct =
-                !col0.ends_with('.') && !col0.ends_with('?') && !col0.ends_with('!') && !col0.ends_with(':');
+            let col0_is_list_marker = is_list_marker_content(col0);
+            // A list marker's own trailing `.`/`)` is punctuation supplied by the marker
+            // convention, not a sentence-final period — it must not exempt the row from
+            // the flow signal below the way real prose punctuation does (#1570).
+            let ends_without_punct = col0_is_list_marker
+                || (!col0.ends_with('.') && !col0.ends_with('?') && !col0.ends_with('!') && !col0.ends_with(':'));
             let starts_lowercase = col1.chars().next().is_some_and(|c| c.is_lowercase());
-            if ends_without_punct && starts_lowercase {
+            // A real list item's second field is typically a new capitalized clause, not a
+            // lowercase sentence continuation, so `starts_lowercase` is the wrong signal
+            // once col0 is known to be a marker — any non-empty col1 already means this
+            // marker is not standing alone as a discrete column value. Gated on
+            // `header_col0_is_marker` so a headed row-number column keeps the strict
+            // signal, and on `!layout_guided` because a layout-guided region is
+            // ML-confirmed as a real table (#1570). ~keep
+            let flows = if col0_is_list_marker && header_col0_is_marker && !layout_guided {
+                ends_without_punct
+            } else {
+                ends_without_punct && starts_lowercase
+            };
+            if flows {
                 flow_rows += 1;
             }
         }
@@ -3852,5 +3941,260 @@ mod tests {
         assert_eq!(straddled_boundary_ratio(&region, &[0]), 0.0);
         assert_eq!(straddled_boundary_ratio(&region, &[]), 0.0);
         assert_eq!(straddled_boundary_ratio(&[], &[0, 100]), 0.0);
+    }
+
+    #[test]
+    fn test_is_list_marker_cell_matches_the_three_shapes() {
+        assert!(is_list_marker_cell("1."));
+        assert!(is_list_marker_cell("12)"));
+        assert!(is_list_marker_cell("a."));
+        assert!(is_list_marker_cell("b)"));
+        assert!(is_list_marker_cell("•"));
+        assert!(is_list_marker_cell("-"));
+        assert!(is_list_marker_cell("–"));
+        assert!(is_list_marker_cell("*"));
+    }
+
+    #[test]
+    fn test_is_list_marker_cell_rejects_non_marker_shapes() {
+        assert!(
+            !is_list_marker_cell("1"),
+            "a bare digit run with no trailing punctuation is not a marker"
+        );
+        assert!(
+            !is_list_marker_cell("ab."),
+            "multi-letter prefix is not a single-letter ordinal"
+        );
+        assert!(
+            !is_list_marker_cell("A."),
+            "spec covers lowercase ordinals only, not uppercase"
+        );
+        assert!(!is_list_marker_cell("Feature"));
+        assert!(!is_list_marker_cell(""));
+        assert!(!is_list_marker_cell("10"));
+        assert!(
+            !is_list_marker_cell("$4.25"),
+            "currency is not a marker even though it contains digits and a dot"
+        );
+    }
+
+    /// Word-geometry fixture for a one-page scanned PDF: a title, a heading, and a
+    /// four-item numbered list, laid out the way the reported #1570 page actually OCRs —
+    /// each list line's words fall into three x-clusters (marker / early phrase / late
+    /// phrase) separated by gaps well above `CELL_MERGE_GAP_HEIGHT_RATIO * median height`,
+    /// so `merge_words_into_cell_tokens` collapses each line into ~3 dense tokens and
+    /// `detect_columns` mints exactly 3 columns from them — reproducing the "spurious
+    /// 3-column table" the issue describes. Built directly with `HocrWord`/geometry and
+    /// run through the real `cluster_words_into_table_regions` / `reconstruct_table` /
+    /// `post_process_table` pipeline, matching the Tesseract route's own call shape
+    /// (`ocr::processor::execution`, `table_column_threshold: 50`,
+    /// `table_row_threshold_ratio: 0.5`, `post_process_table(table, false, false)`). ~keep
+    #[cfg(feature = "ocr")]
+    fn numbered_list_page_words() -> Vec<HocrWord> {
+        fn hocr_word(text: &str, left: u32, top: u32, width: u32, height: u32) -> HocrWord {
+            HocrWord {
+                text: text.to_string(),
+                left,
+                top,
+                width,
+                height,
+                confidence: 95.0,
+            }
+        }
+
+        vec![
+            // Title line (isolated by a large vertical gap from everything below it).
+            hocr_word("Engine", 100, 88, 60, 24),
+            hocr_word("Oil", 165, 88, 30, 24),
+            hocr_word("Change", 200, 88, 65, 24),
+            hocr_word("Procedure", 270, 88, 85, 24),
+            // Heading line (isolated the same way).
+            hocr_word("Required", 100, 288, 75, 24),
+            hocr_word("Steps", 180, 288, 45, 24),
+            // "1. Drain old oil from engine"
+            hocr_word("1.", 100, 488, 20, 24),
+            hocr_word("Drain", 180, 488, 50, 24),
+            hocr_word("old", 234, 488, 30, 24),
+            hocr_word("oil", 400, 488, 25, 24),
+            hocr_word("from", 429, 488, 35, 24),
+            hocr_word("engine", 468, 488, 55, 24),
+            // "2. Replace oil filter"
+            hocr_word("2.", 100, 528, 20, 24),
+            hocr_word("Replace", 180, 528, 65, 24),
+            hocr_word("oil", 400, 528, 25, 24),
+            hocr_word("filter", 429, 528, 45, 24),
+            // "3. Add 5.5 quarts of synthetic 5W-30 oil"
+            hocr_word("3.", 100, 568, 20, 24),
+            hocr_word("Add", 180, 568, 35, 24),
+            hocr_word("5.5", 219, 568, 30, 24),
+            hocr_word("quarts", 400, 568, 55, 24),
+            hocr_word("of", 459, 568, 20, 24),
+            hocr_word("synthetic", 483, 568, 80, 24),
+            hocr_word("5W-30", 567, 568, 50, 24),
+            hocr_word("oil", 621, 568, 25, 24),
+            // "4. Check oil level with dipstick"
+            hocr_word("4.", 100, 608, 20, 24),
+            hocr_word("Check", 180, 608, 50, 24),
+            hocr_word("oil", 234, 608, 25, 24),
+            hocr_word("level", 400, 608, 40, 24),
+            hocr_word("with", 444, 608, 35, 24),
+            hocr_word("dipstick", 483, 608, 65, 24),
+        ]
+    }
+
+    /// #1570: reconstructing the numbered-list region through the real pipeline must no
+    /// longer produce an accepted table. Asserts the FIXED behavior (`None`) — this is the
+    /// TDD-red assertion: it fails against the pre-fix validator (which returns
+    /// `Some(3-column grid)`, fabricating a table out of prose and, worse, deleting that
+    /// prose from the surrounding page per #1571's centre-in-bbox rule) and passes once
+    /// the list-marker guards land.
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_numbered_list_region_is_not_reconstructed_as_a_table() {
+        let words = numbered_list_page_words();
+        let regions = crate::table_core::cluster_words_into_table_regions(&words);
+
+        let list_region = regions
+            .into_iter()
+            .find(|region| region.len() >= crate::table_core::MIN_TABLE_CANDIDATE_WORDS)
+            .expect("the numbered list must cluster into its own table-candidate region");
+        assert_eq!(
+            list_region.len(),
+            24,
+            "the list region must isolate all 24 list words from the title/heading"
+        );
+
+        let table = reconstruct_table(&list_region, 50, 0.5);
+        assert!(
+            !table.is_empty(),
+            "precondition: the list must reconstruct into a non-empty grid"
+        );
+        assert_eq!(
+            table[0].len(),
+            3,
+            "precondition: the list reconstructs into 3 columns, matching the bug report"
+        );
+
+        let result = post_process_table(table, false, false);
+        assert!(
+            result.is_none(),
+            "a numbered list rendered as a 3-column grid must be rejected, not accepted as a fabricated table"
+        );
+    }
+
+    /// Precision regression: a genuine layout-guided table (ML-confirmed region) whose
+    /// first column happens to be numeric-and-punctuated ("1.", "2.", ...) must still be
+    /// accepted. The new list-marker guard is scoped to `!layout_guided`, so this path
+    /// never reaches it at all.
+    #[test]
+    fn test_layout_guided_numeric_first_column_table_is_still_accepted() {
+        let table = vec![
+            vec![
+                "Line".to_string(),
+                "Part Description".to_string(),
+                "Unit Price".to_string(),
+            ],
+            vec![
+                "1.".to_string(),
+                "Stainless Steel Bolt M8x40".to_string(),
+                "$4.25".to_string(),
+            ],
+            vec![
+                "2.".to_string(),
+                "Anodized Aluminum Bracket".to_string(),
+                "$12.90".to_string(),
+            ],
+            vec![
+                "3.".to_string(),
+                "Rubber Grommet Assembly".to_string(),
+                "$1.15".to_string(),
+            ],
+            vec![
+                "4.".to_string(),
+                "Tempered Glass Panel".to_string(),
+                "$38.00".to_string(),
+            ],
+        ];
+        let result = post_process_table(table, true, false);
+        assert!(
+            result.is_some(),
+            "a layout-guided table with a punctuated numeric first column must not be eaten by the #1570 fix"
+        );
+    }
+
+    /// Precision regression, non-layout-guided: the SAME genuine numeric-first-column
+    /// table, reconstructed WITHOUT ML layout confirmation, must still be accepted. Its
+    /// "Line" header is the signal that separates it from a numbered list — a list has a
+    /// marker in every column-0 cell including the first, this table does not (#1570).
+    #[test]
+    fn test_headed_numeric_first_column_table_survives_the_list_marker_guard() {
+        let table = vec![
+            vec![
+                "Line".to_string(),
+                "Part Description".to_string(),
+                "Unit Price".to_string(),
+            ],
+            vec![
+                "1.".to_string(),
+                "Stainless Steel Bolt M8x40".to_string(),
+                "$4.25".to_string(),
+            ],
+            vec![
+                "2.".to_string(),
+                "Anodized Aluminum Bracket".to_string(),
+                "$12.90".to_string(),
+            ],
+            vec![
+                "3.".to_string(),
+                "Rubber Grommet Assembly".to_string(),
+                "$1.15".to_string(),
+            ],
+            vec![
+                "4.".to_string(),
+                "Tempered Glass Panel".to_string(),
+                "$38.00".to_string(),
+            ],
+        ];
+        let result = post_process_table(table, false, false);
+        assert!(
+            result.is_some(),
+            "a headed numeric-first-column table must survive the #1570 list-marker guard without ML confirmation"
+        );
+    }
+
+    /// A list whose markers did not all survive OCR ("Note" where "3." should be) no
+    /// longer satisfies the end-to-end guard, so rejection has to come from the relaxed
+    /// `column_text_flow` signal instead. Proves that relaxation is live, not dead code
+    /// shadowed by the guard above it (#1570).
+    #[test]
+    fn test_partially_ocred_list_markers_are_still_rejected_by_text_flow() {
+        let table = vec![
+            vec!["1.".to_string(), "Drain old".to_string(), "oil from engine".to_string()],
+            vec![
+                "2.".to_string(),
+                "Replace oil".to_string(),
+                "filter and gasket".to_string(),
+            ],
+            vec![
+                "Note".to_string(),
+                "Add 5.5".to_string(),
+                "quarts of synthetic".to_string(),
+            ],
+            vec![
+                "4.".to_string(),
+                "Check oil".to_string(),
+                "level with dipstick".to_string(),
+            ],
+            vec![
+                "5.".to_string(),
+                "Reset the".to_string(),
+                "service indicator".to_string(),
+            ],
+        ];
+        let result = post_process_table(table, false, false);
+        assert!(
+            result.is_none(),
+            "a list with one mis-OCRed marker must still be rejected as prose flow"
+        );
     }
 }

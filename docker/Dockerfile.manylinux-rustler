@@ -32,6 +32,7 @@ RUN dnf -y install \
 # supplies AVIF decode. ~keep
 RUN cd /tmp && \
     curl -fsSL -o libde265.tar.gz https://github.com/strukturag/libde265/releases/download/v1.1.2/libde265-1.1.2.tar.gz && \
+    echo "eaacd1943ab0c452c19f6136a36ca227e6b761b39a81eaca8454d48c147e1f67  libde265.tar.gz" | sha256sum -c - && \
     tar -xzf libde265.tar.gz && \
     cd libde265-1.1.2 && \
     cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -50,6 +51,7 @@ RUN cd /tmp && \
 RUN cd /tmp && \
     export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig && \
     curl -fsSL -o libheif.tar.gz https://github.com/strukturag/libheif/releases/download/v1.23.0/libheif-1.23.0.tar.gz && \
+    echo "4c9182b18897617182eed12ab5eb9f9d855b3aa3a736d6bdb31abc034ec7d393  libheif.tar.gz" | sha256sum -c - && \
     tar -xzf libheif.tar.gz && \
     cd libheif-1.23.0 && \
     cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -60,12 +62,22 @@ RUN cd /tmp && \
     cmake --install build && \
     ldconfig && \
     readelf -d /usr/local/lib/libheif.so.1 | grep -q libde265 && \
+    readelf -d /usr/local/lib/libheif.so.1 | grep -q libaom && \
     cd / && rm -rf /tmp/libheif*
 
+# The two ORT_SHA256 values are the GitHub-published release digests for the
+# ONNXRUNTIME_VERSION pinned above. Overriding that ARG without updating them fails the
+# checksum -- deliberately: an unverified ORT tarball is linked into every published
+# artifact this image builds. ~keep
 RUN mkdir -p /build/onnxruntime && \
-    if [ "$TARGET" = "aarch64-unknown-linux-gnu" ]; then ORT_ARCH="aarch64"; else ORT_ARCH="x64"; fi && \
+    if [ "$TARGET" = "aarch64-unknown-linux-gnu" ]; then \
+        ORT_ARCH="aarch64"; ORT_SHA256="6715b3d19965a2a6981e78ed4ba24f17a8c30d2d26420dbed10aac7ceca0085e"; \
+    else \
+        ORT_ARCH="x64"; ORT_SHA256="43725474ba5663642e17684717946693850e2005efbd724ac72da278fead25e6"; \
+    fi && \
     curl -fL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-${ORT_ARCH}-${ONNXRUNTIME_VERSION}.tgz" \
         -o /build/onnxruntime.tgz && \
+    echo "${ORT_SHA256}  /build/onnxruntime.tgz" | sha256sum -c - && \
     tar -xzf /build/onnxruntime.tgz -C /build/onnxruntime --strip-components=1 && \
     cp /build/onnxruntime/lib/libonnxruntime.so* /usr/local/lib/ && \
     ldconfig && \

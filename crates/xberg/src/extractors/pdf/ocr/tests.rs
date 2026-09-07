@@ -8350,4 +8350,45 @@ Name: ___
         assert_eq!(result.score, Some(0.94));
         assert_eq!(result.word_count, 3);
     }
+
+    /// GH#1584: `VlmFallbackPolicy::OnLowQuality { quality_threshold }` does not gate on
+    /// `PageOcrConfidence.score` -- the value a caller actually sees on `PageContent`. The
+    /// pipeline accept decision (`score >= pipeline.quality_thresholds.pipeline_min_quality`
+    /// in `run_ocr_pipeline_for_page`) compares `pipeline_stage_score`, a 0.7/0.3 blend of
+    /// text-shape quality and confidence -- so a page whose reported confidence is clearly
+    /// below the configured threshold can still be *accepted* (no VLM fallback) once clean
+    /// prose pulls the blended score back up. This pins that exact mismatch: the same raw
+    /// confidence (0.55) that reports as `PageOcrConfidence.score: Some(0.55)` -- below the
+    /// reporter's 0.6 threshold -- clears `pipeline_min_quality = 0.6` once blended with a
+    /// high text-shape score, so the page is wrongly treated as good enough. ~keep
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn pipeline_accept_score_is_not_the_same_quantity_as_page_ocr_confidence() {
+        let quality_threshold = 0.6;
+        let raw_confidence = 55.0; // 0.55 on a 0-1 scale once normalized below.
+        let semantics = crate::plugins::ConfidenceSemantics::Legibility { scale_max: 100.0 };
+
+        let reported = page_ocr_confidence(semantics, Some(raw_confidence), 40, "tesseract").unwrap();
+        assert_eq!(
+            reported.score,
+            Some(0.55),
+            "the confidence PageOcrConfidence reports to the caller"
+        );
+        assert!(
+            reported.score.unwrap() < quality_threshold,
+            "a caller reading PageOcrConfidence.score alone would expect this page to fall back to VLM"
+        );
+
+        let text = "This is a well-formed sentence with proper words and clean structure throughout.";
+        let text_score = compute_quality_score(text, &t());
+        let normalized_confidence = raw_confidence / 100.0;
+        let accept_score = pipeline_stage_score(text_score, Some(normalized_confidence));
+
+        assert!(
+            accept_score >= quality_threshold,
+            "expected the blended pipeline score ({accept_score}) to clear the threshold \
+             ({quality_threshold}) even though the reported confidence ({normalized_confidence}) \
+             does not -- this is the root cause of GH#1584's 'vlm fallback does not trigger'"
+        );
+    }
 }

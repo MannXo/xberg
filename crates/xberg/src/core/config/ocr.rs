@@ -606,12 +606,20 @@ pub enum VlmFallbackPolicy {
     /// Try the classical OCR backend first. If the quality score is below
     /// `quality_threshold`, send the page to the VLM.
     ///
-    /// `quality_threshold` is in the `[0.0, 1.0]` range produced by
-    /// `text::quality::calculate_quality_score`. A value of `0.5` is a
-    /// reasonable starting point; calibrate with the Stage 0 benchmark harness.
+    /// `quality_threshold` is in the `[0.0, 1.0]` range, but it is **not** the same
+    /// quantity reported on [`crate::types::page::PageOcrConfidence::score`] (GH#1584).
+    /// The accept decision blends text-shape quality with confidence, weighted 0.7/0.3
+    /// (`extractors::pdf::ocr::pipeline_stage_score`) -- when the backend's confidence is on
+    /// a known scale it contributes only 30% of the compared score, so a page can clear this
+    /// threshold on clean-looking text even while its own `PageOcrConfidence.score` reads
+    /// below it. Do not calibrate this value by reading `PageOcrConfidence.score` off a
+    /// sample page and expecting an equal `quality_threshold` to reproduce the same
+    /// accept/reject outcome. A value of `0.5` is a reasonable starting point; calibrate with
+    /// the Stage 0 benchmark harness.
     OnLowQuality {
-        /// Minimum acceptable quality score from the classical backend.
-        /// Pages scoring below this are retried with VLM.
+        /// Minimum acceptable quality score from the classical backend. Pages scoring below
+        /// this are retried with VLM -- see this variant's doc comment for what "scoring"
+        /// means here.
         quality_threshold: f64,
     },
 

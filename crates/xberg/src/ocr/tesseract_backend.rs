@@ -968,7 +968,7 @@ mod tests {
         let backend = TesseractBackend::new();
         let custom_tess_config = crate::types::TesseractConfig {
             language: vec!["fra".to_string()],
-            psm: 6,
+            psm: Some(6),
             enable_table_detection: true,
             ..Default::default()
         };
@@ -1158,7 +1158,7 @@ mod tests {
 
         let custom_tess_config = crate::types::TesseractConfig {
             language: vec!["eng".to_string()],
-            psm: 6,
+            psm: Some(6),
             output_format: "markdown".to_string(),
             oem: 1,
             min_confidence: 80.0,
@@ -1195,7 +1195,7 @@ mod tests {
     fn test_convert_config_type_conversions() {
         let public_config = crate::types::TesseractConfig {
             language: vec!["eng".to_string()],
-            psm: 6,
+            psm: Some(6),
             oem: 3,
             table_column_threshold: 100,
             ..Default::default()

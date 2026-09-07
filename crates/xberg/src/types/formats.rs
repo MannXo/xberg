@@ -447,11 +447,19 @@ pub struct TesseractConfig {
 
     /// Page Segmentation Mode (0-13).
     ///
-    /// Common values:
-    /// - 3: Fully automatic page segmentation (native default)
-    /// - 6: Assume a single uniform block of text (WASM default — avoids layout-analysis hang)
+    /// `None` (the default) means the caller made no explicit choice: the extraction
+    /// pipeline applies its own context-appropriate PSM (whole-image PSM 11, vertical-
+    /// language PSM 5, layout-region PSM 6, or the sparse-text retry's PSM 3) exactly as
+    /// it would with no `TesseractConfig` at all — see issue #1573. Setting any other
+    /// field on this struct no longer changes that behaviour.
+    ///
+    /// Common explicit values:
+    /// - 3: Fully automatic page segmentation (native engine default)
+    /// - 6: Assume a single uniform block of text (WASM engine default — avoids
+    ///   layout-analysis hang)
     /// - 11: Sparse text with no particular order
-    pub psm: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub psm: Option<i32>,
 
     /// Output format ("text" or "markdown")
     pub output_format: String,
@@ -530,10 +538,7 @@ impl Default for TesseractConfig {
     fn default() -> Self {
         Self {
             language: vec!["eng".to_string()],
-            #[cfg(target_arch = "wasm32")]
-            psm: 6,
-            #[cfg(not(target_arch = "wasm32"))]
-            psm: 3,
+            psm: None,
             output_format: "markdown".to_string(),
             oem: 3,
             min_confidence: 0.0,

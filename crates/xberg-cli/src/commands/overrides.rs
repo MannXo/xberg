@@ -1685,7 +1685,7 @@ mod tests {
     fn test_ocr_no_cache_changes_only_use_cache_when_tesseract_config_already_set() {
         let non_default_tesseract_config = xberg::TesseractConfig {
             language: vec!["fra".to_string(), "deu".to_string()],
-            psm: 11,
+            psm: Some(11),
             output_format: "hocr".to_string(),
             oem: 1,
             min_confidence: 42.5,

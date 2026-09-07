@@ -1,8 +1,13 @@
 /// DPI detection and normalization for scanned images.
 pub mod dpi;
+// Both need the `ocr-pipeline` dependency set (`fast_image_resize` in particular, which
+// `layout-detection` does not pull); only `dpi` is dependency-free enough to build under
+// `layout-detection` alone. ~keep
 /// Image preprocessing pipeline: denoising, deskew, binarization, rotation.
+#[cfg(feature = "ocr-pipeline")]
 pub mod preprocessing;
 /// Image resize helpers used before OCR to normalize resolution.
+#[cfg(feature = "ocr-pipeline")]
 pub mod resize;
 
 // Re-exported only for the Tesseract processor (`ocr::processor::execution`); the

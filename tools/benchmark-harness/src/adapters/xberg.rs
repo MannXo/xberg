@@ -475,11 +475,15 @@ mod tests {
 
         assert!(ocr.enabled);
         assert_eq!(ocr.backend, "tesseract");
-        // `tesseract_config` must stay absent so xberg's own auto-PSM selection
-        // (`apply_default_whole_image_tesseract_psm`) fires instead of the pinned PSM 3 default. ~keep
+        // As of xberg#1573, `apply_default_tesseract_psm` keys off the `psm` FIELD being
+        // unset, not off `tesseract_config` presence, so a materialized struct with `psm:
+        // None` would no longer pin PSM 3 either. This assertion is accordingly no longer
+        // load-bearing for the auto-PSM outcome — it stays as a narrower, still-true
+        // invariant: this benchmark config path does not materialize `tesseract_config` at
+        // all. ~keep
         assert!(
             ocr.tesseract_config.is_none(),
-            "benchmark config must not materialize tesseract_config, or it would pin PSM 3"
+            "benchmark config must not materialize tesseract_config"
         );
     }
 

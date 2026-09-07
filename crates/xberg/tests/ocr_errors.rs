@@ -76,7 +76,7 @@ fn test_ocr_invalid_psm_mode() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(TesseractConfig {
-                psm: 999,
+                psm: Some(999),
                 ..Default::default()
             }),
             ..Default::default()
@@ -289,7 +289,7 @@ fn test_ocr_negative_psm() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(TesseractConfig {
-                psm: -5,
+                psm: Some(-5),
                 ..Default::default()
             }),
             ..Default::default()

@@ -108,8 +108,12 @@ pub mod sparse_embeddings;
 #[cfg(any(feature = "late-interaction-presets", feature = "late-interaction"))]
 pub mod late_interaction;
 
-#[cfg(feature = "ocr-pipeline")]
-/// Image preprocessing and DPI utilities for OCR pipelines.
+// `layout-detection` renders PDF pages itself and needs `image::dpi` to honour a configured
+// render DPI (#1577); it does not imply `ocr-pipeline`, so the module gate has to cover both or
+// `pdf + layout-detection` fails to compile. The submodules that genuinely need the OCR
+// dependency set stay gated inside `image/mod.rs`. ~keep
+#[cfg(any(feature = "ocr-pipeline", feature = "layout-detection"))]
+/// Image preprocessing and DPI utilities for OCR and layout pipelines.
 pub mod image;
 
 #[cfg(feature = "language-detection")]

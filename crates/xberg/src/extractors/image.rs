@@ -1202,18 +1202,26 @@ fn configured_region_ocr(
     Ok((backend, region_config))
 }
 
+/// Applies `psm` whenever the caller has not explicitly set one, whether or not a
+/// `TesseractConfig` is present. Keyed on the `psm` field itself, not on struct
+/// presence (#1573) — an explicitly materialised `TesseractConfig` that leaves `psm`
+/// unset still gets the automatic default, and any other field the caller did set is
+/// preserved rather than overwritten.
 #[cfg(any(feature = "ocr", feature = "ocr-wasm", feature = "ocr-pipeline"))]
 fn apply_default_tesseract_psm(config: &mut crate::core::config::OcrConfig, psm: i32) {
-    if config.backend != "tesseract" || config.tesseract_config.is_some() {
+    if config.backend != "tesseract" {
         return;
     }
 
-    let tesseract_config = crate::types::TesseractConfig {
-        language: config.language.clone(),
-        psm,
-        ..Default::default()
-    };
-    config.tesseract_config = Some(tesseract_config);
+    let tesseract_config = config
+        .tesseract_config
+        .get_or_insert_with(|| crate::types::TesseractConfig {
+            language: config.language.clone(),
+            ..Default::default()
+        });
+    if tesseract_config.psm.is_none() {
+        tesseract_config.psm = Some(psm);
+    }
 }
 
 #[cfg(any(feature = "ocr", feature = "ocr-wasm", feature = "ocr-pipeline"))]
@@ -1273,7 +1281,9 @@ fn should_retry_sparse_image_ocr(
     any(feature = "ocr", feature = "ocr-wasm", feature = "ocr-pipeline")
 ))]
 fn is_implicit_horizontal_tesseract(config: &crate::core::config::OcrConfig) -> bool {
-    config.backend == "tesseract" && config.tesseract_config.is_none() && !has_vertical_tesseract_language(config)
+    config.backend == "tesseract"
+        && config.tesseract_config.as_ref().and_then(|c| c.psm).is_none()
+        && !has_vertical_tesseract_language(config)
 }
 
 #[cfg(all(
@@ -1306,7 +1316,7 @@ fn sparse_image_ocr_fallback_config(
 ) -> crate::core::config::OcrConfig {
     let mut fallback_config = whole_image_config.clone();
     let tesseract_config = fallback_config.tesseract_config.get_or_insert_default();
-    tesseract_config.psm = SPARSE_IMAGE_OCR_FALLBACK_PSM;
+    tesseract_config.psm = Some(SPARSE_IMAGE_OCR_FALLBACK_PSM);
     let preprocessing = crate::types::ImagePreprocessingConfig {
         deskew: false,
         contrast_enhance: true,
@@ -2566,7 +2576,7 @@ mod tests {
         let tesseract_config = ocr_config
             .tesseract_config
             .expect("whole-image OCR must materialize Tesseract configuration");
-        assert_eq!(tesseract_config.psm, VERTICAL_BLOCK_TESSERACT_PSM);
+        assert_eq!(tesseract_config.psm, Some(VERTICAL_BLOCK_TESSERACT_PSM));
         assert_eq!(tesseract_config.language, vec!["jpn_vert"]);
     }
 
@@ -2583,7 +2593,7 @@ mod tests {
         let tesseract_config = ocr_config
             .tesseract_config
             .expect("whole-image OCR must materialize Tesseract configuration");
-        assert_eq!(tesseract_config.psm, WHOLE_IMAGE_TESSERACT_PSM);
+        assert_eq!(tesseract_config.psm, Some(WHOLE_IMAGE_TESSERACT_PSM));
         assert_eq!(tesseract_config.language, vec!["eng"]);
     }
 
@@ -2594,7 +2604,7 @@ mod tests {
             language: vec!["jpn_vert".to_string()],
             tesseract_config: Some(crate::types::TesseractConfig {
                 language: vec!["jpn_vert".to_string()],
-                psm: 4,
+                psm: Some(4),
                 ..Default::default()
             }),
             ..Default::default()
@@ -2603,8 +2613,68 @@ mod tests {
         apply_default_whole_image_tesseract_psm(&mut ocr_config);
 
         let tesseract_config = ocr_config.tesseract_config.expect("explicit config must remain");
-        assert_eq!(tesseract_config.psm, 4);
+        assert_eq!(tesseract_config.psm, Some(4));
         assert_eq!(tesseract_config.language, vec!["jpn_vert"]);
+    }
+
+    // Regression test for #1573: `TesseractConfig()` with every field left at its
+    // default must produce the SAME effective PSM as no `TesseractConfig` at all, not
+    // fall back to the internal engine default (PSM 3 native / 6 wasm). Previously
+    // `apply_default_tesseract_psm` keyed off `tesseract_config.is_some()`, so a caller
+    // who materialized the struct (even with every field default) silently lost the
+    // whole-image PSM.
+    #[cfg(any(feature = "ocr", feature = "ocr-wasm", feature = "ocr-pipeline"))]
+    #[test]
+    fn should_apply_same_default_psm_whether_or_not_tesseract_config_struct_is_present() {
+        let mut without_struct = crate::core::config::OcrConfig {
+            language: vec!["eng".to_string()],
+            ..Default::default()
+        };
+        let mut with_default_struct = crate::core::config::OcrConfig {
+            language: vec!["eng".to_string()],
+            tesseract_config: Some(crate::types::TesseractConfig::default()),
+            ..Default::default()
+        };
+
+        apply_default_whole_image_tesseract_psm(&mut without_struct);
+        apply_default_whole_image_tesseract_psm(&mut with_default_struct);
+
+        let psm_without_struct = without_struct
+            .tesseract_config
+            .expect("whole-image OCR must materialize Tesseract configuration")
+            .psm;
+        let psm_with_default_struct = with_default_struct
+            .tesseract_config
+            .expect("struct was already present")
+            .psm;
+
+        assert_eq!(psm_without_struct, Some(WHOLE_IMAGE_TESSERACT_PSM));
+        assert_eq!(
+            psm_without_struct, psm_with_default_struct,
+            "TesseractConfig::default() must resolve to the same effective PSM as no TesseractConfig at all"
+        );
+    }
+
+    // An explicitly set `psm`, alongside another explicitly set field, must still be
+    // honoured and not overwritten by the automatic default (#1573).
+    #[cfg(any(feature = "ocr", feature = "ocr-wasm", feature = "ocr-pipeline"))]
+    #[test]
+    fn should_not_overwrite_explicit_psm_when_another_field_is_also_set() {
+        let mut ocr_config = crate::core::config::OcrConfig {
+            language: vec!["eng".to_string()],
+            tesseract_config: Some(crate::types::TesseractConfig {
+                psm: Some(7),
+                enable_table_detection: false,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        apply_default_whole_image_tesseract_psm(&mut ocr_config);
+
+        let tesseract_config = ocr_config.tesseract_config.expect("explicit config must remain");
+        assert_eq!(tesseract_config.psm, Some(7));
+        assert!(!tesseract_config.enable_table_detection);
     }
 
     #[cfg(feature = "ocr")]
@@ -2738,10 +2808,13 @@ mod tests {
         }
 
         #[test]
-        fn should_exclude_explicit_and_vertical_tesseract_from_sparse_retry() {
+        fn should_exclude_explicit_psm_and_vertical_tesseract_from_sparse_retry() {
             let result = result_with_word_confidences(&[0.10]);
-            let explicit_config = crate::core::config::OcrConfig {
-                tesseract_config: Some(crate::types::TesseractConfig::default()),
+            let explicit_psm_config = crate::core::config::OcrConfig {
+                tesseract_config: Some(crate::types::TesseractConfig {
+                    psm: Some(4),
+                    ..Default::default()
+                }),
                 ..Default::default()
             };
             let vertical_config = crate::core::config::OcrConfig {
@@ -2753,9 +2826,29 @@ mod tests {
                 ..Default::default()
             };
 
-            assert!(!should_retry_sparse_image_ocr(&explicit_config, &result));
+            assert!(!should_retry_sparse_image_ocr(&explicit_psm_config, &result));
             assert!(!should_retry_sparse_image_ocr(&vertical_config, &result));
             assert!(!should_retry_sparse_image_ocr(&other_backend_config, &result));
+        }
+
+        // Regression test for #1573: a `TesseractConfig` may be present for a reason
+        // unrelated to `psm` (e.g. table detection toggled off). The sparse-text retry
+        // must still trigger as long as `psm` itself is unset — struct presence alone
+        // no longer disables it. Previously `is_implicit_horizontal_tesseract` keyed off
+        // `tesseract_config.is_none()`, so this case never retried.
+        #[test]
+        fn should_retry_sparse_image_ocr_when_tesseract_config_present_but_psm_unset() {
+            let config = crate::core::config::OcrConfig {
+                tesseract_config: Some(crate::types::TesseractConfig {
+                    enable_table_detection: false,
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let confidences = vec![0.10; SPARSE_IMAGE_OCR_WORD_LIMIT];
+            let result = result_with_word_confidences(&confidences);
+
+            assert!(should_retry_sparse_image_ocr(&config, &result));
         }
 
         #[test]
@@ -2788,7 +2881,7 @@ mod tests {
                 .tesseract_config
                 .expect("fallback must materialize Tesseract configuration");
 
-            assert_eq!(tesseract_config.psm, SPARSE_IMAGE_OCR_FALLBACK_PSM);
+            assert_eq!(tesseract_config.psm, Some(SPARSE_IMAGE_OCR_FALLBACK_PSM));
             assert_eq!(
                 tesseract_config
                     .preprocessing
@@ -3183,7 +3276,7 @@ mod tests {
             Some(crate::core::config::OutputFormat::Plain)
         );
         assert_eq!(tesseract_config.output_format, "text");
-        assert_eq!(tesseract_config.psm, 6);
+        assert_eq!(tesseract_config.psm, Some(6));
         assert!(!tesseract_config.enable_table_detection);
         assert!(ocr_config.tesseract_config.is_none());
     }
@@ -3194,7 +3287,7 @@ mod tests {
         let extraction_config = ExtractionConfig::default();
         let ocr_config = crate::core::config::OcrConfig {
             tesseract_config: Some(crate::types::TesseractConfig {
-                psm: 4,
+                psm: Some(4),
                 ..Default::default()
             }),
             ..Default::default()
@@ -3204,7 +3297,7 @@ mod tests {
 
         assert_eq!(
             region_config.tesseract_config.expect("explicit config must remain").psm,
-            4
+            Some(4)
         );
     }
 

@@ -23949,6 +23949,19 @@ char *xberg_tesseract_config_language(XBERGAlefHandle handle);
 int32_t xberg_tesseract_config_psm(XBERGAlefHandle handle);
 
 /**
+ * Report whether the `psm` field on a `TesseractConfig` is `Some`.
+ *
+ * `xberg_tesseract_config_psm` cannot distinguish a `None` field from a
+ * legitimate zero-valued `Some` at the C ABI boundary -- there is no null
+ * representation for a numeric return, so both collapse to the same sentinel.
+ * Call this function first: `1` means the field getter's return value is
+ * meaningful, `0` means the field is absent and the getter's sentinel must be
+ * ignored, `-1` reports an invalid handle (see `xberg_last_error_code`). #
+ * Safety Pointer must be a valid handle returned by this library.
+ */
+int32_t xberg_tesseract_config_has_psm(XBERGAlefHandle handle);
+
+/**
  * Get the `output_format` field from a `TesseractConfig`.
  * A non-null returned pointer is owned by the caller.
  * It must be freed with `xberg_free_string`.

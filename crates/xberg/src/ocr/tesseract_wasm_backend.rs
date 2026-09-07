@@ -256,16 +256,17 @@ fn bundled_eng_traineddata() -> Option<&'static [u8]> {
 
 /// Resolves the page segmentation mode to use for a recognition call.
 ///
-/// Respects `config.tesseract_config.psm` when it is present and maps to a
-/// valid `TessPageSegMode`. Falls back to [`DEFAULT_WASM_PSM`] — never to
-/// Tesseract's own `PSM_AUTO` default — when the config is unset or carries
-/// an out-of-range value, so callers can never end up hitting the PSM_AUTO
-/// hang described in issue #855 by omission.
+/// Respects `config.tesseract_config.psm` when it is explicitly set (not just when
+/// `tesseract_config` itself is present — #1573) and maps to a valid `TessPageSegMode`.
+/// Falls back to [`DEFAULT_WASM_PSM`] — never to Tesseract's own `PSM_AUTO` default —
+/// when `psm` is unset or carries an out-of-range value, so callers can never end up
+/// hitting the PSM_AUTO hang described in issue #855 by omission.
 fn resolve_psm(config: &OcrConfig) -> TessPageSegMode {
     config
         .tesseract_config
         .as_ref()
-        .and_then(|c| TessPageSegMode::try_from_int(c.psm))
+        .and_then(|c| c.psm)
+        .and_then(TessPageSegMode::try_from_int)
         .unwrap_or(DEFAULT_WASM_PSM)
 }
 
@@ -407,7 +408,7 @@ mod tests {
     fn should_respect_explicit_psm_from_tesseract_config() {
         let config = OcrConfig {
             tesseract_config: Some(crate::types::TesseractConfig {
-                psm: 7,
+                psm: Some(7),
                 ..Default::default()
             }),
             ..Default::default()
@@ -420,7 +421,7 @@ mod tests {
     fn should_respect_explicit_psm_auto_when_caller_opts_in() {
         let config = OcrConfig {
             tesseract_config: Some(crate::types::TesseractConfig {
-                psm: 3,
+                psm: Some(3),
                 ..Default::default()
             }),
             ..Default::default()
@@ -433,7 +434,23 @@ mod tests {
     fn should_fall_back_to_default_wasm_psm_for_out_of_range_psm_value() {
         let config = OcrConfig {
             tesseract_config: Some(crate::types::TesseractConfig {
-                psm: 255,
+                psm: Some(255),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        assert_eq!(resolve_psm(&config), DEFAULT_WASM_PSM);
+    }
+
+    // Regression test for #1573: a `TesseractConfig` present for a reason unrelated to
+    // `psm` must still resolve to the platform default PSM, exactly as if the struct
+    // were absent — the field's absence, not the struct's, is what should matter.
+    #[test]
+    fn should_fall_back_to_default_wasm_psm_when_tesseract_config_present_but_psm_unset() {
+        let config = OcrConfig {
+            tesseract_config: Some(crate::types::TesseractConfig {
+                enable_table_detection: false,
                 ..Default::default()
             }),
             ..Default::default()

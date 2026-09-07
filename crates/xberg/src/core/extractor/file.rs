@@ -772,7 +772,7 @@ mod cache_key_tests {
         let psm_auto = ExtractionConfig {
             ocr: Some(OcrConfig {
                 tesseract_config: Some(TesseractConfig {
-                    psm: 3,
+                    psm: Some(3),
                     ..TesseractConfig::default()
                 }),
                 ..OcrConfig::default()
@@ -782,7 +782,7 @@ mod cache_key_tests {
         let psm_sparse = ExtractionConfig {
             ocr: Some(OcrConfig {
                 tesseract_config: Some(TesseractConfig {
-                    psm: 11,
+                    psm: Some(11),
                     ..TesseractConfig::default()
                 }),
                 ..OcrConfig::default()

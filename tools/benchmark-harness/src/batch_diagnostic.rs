@@ -243,7 +243,7 @@ fn materialize_or_disable_tesseract_result_cache(
         None => {
             *tesseract_config = Some(xberg::TesseractConfig {
                 language: languages.to_vec(),
-                psm: crate::adapter::xberg_default_tesseract_psm(languages),
+                psm: Some(crate::adapter::xberg_default_tesseract_psm(languages)),
                 use_cache: false,
                 ..Default::default()
             });
@@ -638,7 +638,7 @@ mod tests {
             .tesseract_config
             .expect("disable_ocr_result_caches must materialize a tesseract_config");
         assert!(!tesseract.use_cache);
-        assert_eq!(tesseract.psm, crate::adapter::XBERG_WHOLE_IMAGE_TESSERACT_PSM);
+        assert_eq!(tesseract.psm, Some(crate::adapter::XBERG_WHOLE_IMAGE_TESSERACT_PSM));
         assert_eq!(tesseract.language, ["eng"]);
     }
 
@@ -651,7 +651,11 @@ mod tests {
 
         let tesseract = extraction.ocr.unwrap().tesseract_config.unwrap();
         assert!(!tesseract.use_cache);
-        assert_eq!(tesseract.psm, 6, "disabling the cache must not touch an explicit PSM");
+        assert_eq!(
+            tesseract.psm,
+            Some(6),
+            "disabling the cache must not touch an explicit PSM"
+        );
     }
 
     #[test]
@@ -669,14 +673,18 @@ mod tests {
         assert!(!implicit.use_cache);
         assert_eq!(
             implicit.psm,
-            crate::adapter::XBERG_VERTICAL_BLOCK_TESSERACT_PSM,
+            Some(crate::adapter::XBERG_VERTICAL_BLOCK_TESSERACT_PSM),
             "a vertical-language stage must materialize PSM 5, not the default PSM 3"
         );
         assert_eq!(implicit.language, ["jpn_vert"]);
 
         let explicit = stages[1].tesseract_config.as_ref().unwrap();
         assert!(!explicit.use_cache);
-        assert_eq!(explicit.psm, 6, "disabling the cache must not touch an explicit PSM");
+        assert_eq!(
+            explicit.psm,
+            Some(6),
+            "disabling the cache must not touch an explicit PSM"
+        );
     }
 
     #[test]

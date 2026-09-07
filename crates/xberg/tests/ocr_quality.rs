@@ -491,7 +491,7 @@ fn test_ocr_consistency_with_different_psm() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(xberg::types::TesseractConfig {
-                psm: 3,
+                psm: Some(3),
                 ..Default::default()
             }),
             ..Default::default()
@@ -505,7 +505,7 @@ fn test_ocr_consistency_with_different_psm() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(xberg::types::TesseractConfig {
-                psm: 6,
+                psm: Some(6),
                 ..Default::default()
             }),
             ..Default::default()

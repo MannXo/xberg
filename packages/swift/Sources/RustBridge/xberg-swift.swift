@@ -25325,8 +25325,8 @@ public class TesseractConfig: TesseractConfigRefMut {
     }
 }
 extension TesseractConfig {
-    public convenience init<GenericIntoRustString: IntoRustString>(_ language: RustVec<GenericIntoRustString>, _ psm: Int32, _ output_format: GenericIntoRustString, _ oem: Int32, _ min_confidence: Double, _ preprocessing: Optional<ImagePreprocessingConfig>, _ enable_table_detection: Bool, _ table_min_confidence: Double, _ table_column_threshold: Int32, _ table_row_threshold_ratio: Double, _ use_cache: Bool, _ classify_use_pre_adapted_templates: Bool, _ language_model_ngram_on: Bool, _ tessedit_dont_blkrej_good_wds: Bool, _ tessedit_dont_rowrej_good_wds: Bool, _ tessedit_enable_dict_correction: Bool, _ tessedit_char_whitelist: GenericIntoRustString, _ tessedit_char_blacklist: GenericIntoRustString, _ tessedit_use_primary_params_model: Bool, _ textord_space_size_is_variable: Bool, _ thresholding_method: Bool) {
-        self.init(ptr: __swift_bridge__$TesseractConfig$new({ let val = language; val.isOwned = false; return val.ptr }(), psm, { let rustString = output_format.intoRustString(); rustString.isOwned = false; return rustString.ptr }(), oem, min_confidence, { if let val = preprocessing { val.isOwned = false; return val.ptr } else { return nil } }(), enable_table_detection, table_min_confidence, table_column_threshold, table_row_threshold_ratio, use_cache, classify_use_pre_adapted_templates, language_model_ngram_on, tessedit_dont_blkrej_good_wds, tessedit_dont_rowrej_good_wds, tessedit_enable_dict_correction, { let rustString = tessedit_char_whitelist.intoRustString(); rustString.isOwned = false; return rustString.ptr }(), { let rustString = tessedit_char_blacklist.intoRustString(); rustString.isOwned = false; return rustString.ptr }(), tessedit_use_primary_params_model, textord_space_size_is_variable, thresholding_method))
+    public convenience init<GenericIntoRustString: IntoRustString>(_ language: RustVec<GenericIntoRustString>, _ psm: Optional<Int32>, _ output_format: GenericIntoRustString, _ oem: Int32, _ min_confidence: Double, _ preprocessing: Optional<ImagePreprocessingConfig>, _ enable_table_detection: Bool, _ table_min_confidence: Double, _ table_column_threshold: Int32, _ table_row_threshold_ratio: Double, _ use_cache: Bool, _ classify_use_pre_adapted_templates: Bool, _ language_model_ngram_on: Bool, _ tessedit_dont_blkrej_good_wds: Bool, _ tessedit_dont_rowrej_good_wds: Bool, _ tessedit_enable_dict_correction: Bool, _ tessedit_char_whitelist: GenericIntoRustString, _ tessedit_char_blacklist: GenericIntoRustString, _ tessedit_use_primary_params_model: Bool, _ textord_space_size_is_variable: Bool, _ thresholding_method: Bool) {
+        self.init(ptr: __swift_bridge__$TesseractConfig$new({ let val = language; val.isOwned = false; return val.ptr }(), psm.intoFfiRepr(), { let rustString = output_format.intoRustString(); rustString.isOwned = false; return rustString.ptr }(), oem, min_confidence, { if let val = preprocessing { val.isOwned = false; return val.ptr } else { return nil } }(), enable_table_detection, table_min_confidence, table_column_threshold, table_row_threshold_ratio, use_cache, classify_use_pre_adapted_templates, language_model_ngram_on, tessedit_dont_blkrej_good_wds, tessedit_dont_rowrej_good_wds, tessedit_enable_dict_correction, { let rustString = tessedit_char_whitelist.intoRustString(); rustString.isOwned = false; return rustString.ptr }(), { let rustString = tessedit_char_blacklist.intoRustString(); rustString.isOwned = false; return rustString.ptr }(), tessedit_use_primary_params_model, textord_space_size_is_variable, thresholding_method))
     }
 }
 public class TesseractConfigRefMut: TesseractConfigRef {
@@ -25346,8 +25346,8 @@ extension TesseractConfigRef {
         RustVec(ptr: __swift_bridge__$TesseractConfig$language(ptr))
     }
 
-    public func psm() -> Int32 {
-        __swift_bridge__$TesseractConfig$psm(ptr)
+    public func psm() -> Optional<Int32> {
+        __swift_bridge__$TesseractConfig$psm(ptr).intoSwiftRepr()
     }
 
     public func outputFormat() -> RustString {

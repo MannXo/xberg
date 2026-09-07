@@ -23886,7 +23886,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       throw Exception('unexpected arr length: expect 21 but see ${arr.length}');
     return TesseractConfig(
       language: dco_decode_list_String(arr[0]),
-      psm: dco_decode_i_64(arr[1]),
+      psm: dco_decode_opt_box_autoadd_i_64(arr[1]),
       outputFormat: dco_decode_String(arr[2]),
       oem: dco_decode_i_64(arr[3]),
       minConfidence: dco_decode_f_64(arr[4]),
@@ -34858,7 +34858,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TesseractConfig sse_decode_tesseract_config(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_language = sse_decode_list_String(deserializer);
-    var var_psm = sse_decode_i_64(deserializer);
+    var var_psm = sse_decode_opt_box_autoadd_i_64(deserializer);
     var var_outputFormat = sse_decode_String(deserializer);
     var var_oem = sse_decode_i_64(deserializer);
     var var_minConfidence = sse_decode_f_64(deserializer);
@@ -44805,7 +44805,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_String(self.language, serializer);
-    sse_encode_i_64(self.psm, serializer);
+    sse_encode_opt_box_autoadd_i_64(self.psm, serializer);
     sse_encode_String(self.outputFormat, serializer);
     sse_encode_i_64(self.oem, serializer);
     sse_encode_f_64(self.minConfidence, serializer);

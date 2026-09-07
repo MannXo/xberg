@@ -394,7 +394,7 @@ fn tesseract_full_page_config(output_format: OutputFormat) -> ExtractionConfig {
             language: vec!["eng".to_string()],
             tesseract_config: Some(xberg::TesseractConfig {
                 language: vec!["eng".to_string()],
-                psm: FULL_PAGE_SEGMENTATION_PSM,
+                psm: Some(FULL_PAGE_SEGMENTATION_PSM),
                 ..Default::default()
             }),
             element_config: Some(xberg::OcrElementConfig {

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> **This release contains a breaking public API change.** `TesseractConfig.psm` is now optional.
+> Callers that read or set it as a plain integer must handle `None` / `null` — see below.
+
+### Changed
+
+- **Breaking:** `TesseractConfig.psm` is now `Option<i32>` (`null`/`None`/absent in the bindings)
+  and defaults to unset rather than to 3. This fixes supplying a `TesseractConfig` at all acting
+  as a hidden behaviour switch: because several code paths keyed on the struct being absent, a
+  caller who set one unrelated field — table detection, a preprocessing knob — silently lost the
+  whole-image PSM 11, the vertical-language PSM 5, the layout-region PSM 6, and the sparse-text
+  retry, and got Tesseract's PSM 3 instead. `TesseractConfig()` with default fields is now a
+  no-op: the pipeline applies exactly the same automatic PSM it would with no `TesseractConfig`.
+  An explicitly set `psm` is still honoured. Bindings that model `psm` as a plain integer expose
+  a companion presence check (for example `xberg_tesseract_config_has_psm` in the C API), since a
+  bare integer cannot distinguish "unset" from a real `0`.
+
 ### Fixed
 
 - Fixed a numbered or bulleted list on a scanned page being reconstructed as a table, replacing

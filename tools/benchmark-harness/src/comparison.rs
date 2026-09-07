@@ -585,7 +585,7 @@ fn build_tesseract_extraction_config(psm: i32) -> xberg::ExtractionConfig {
             language: vec!["eng".to_string()],
             tesseract_config: Some(xberg::TesseractConfig {
                 language: vec!["eng".to_string()],
-                psm,
+                psm: Some(psm),
                 ..Default::default()
             }),
             ..Default::default()
@@ -678,7 +678,7 @@ fn materialize_or_disable_tesseract_result_cache(
         None => {
             *tesseract_config = Some(xberg::TesseractConfig {
                 language: languages.to_vec(),
-                psm: crate::adapter::xberg_default_tesseract_psm(languages),
+                psm: Some(crate::adapter::xberg_default_tesseract_psm(languages)),
                 use_cache: false,
                 ..Default::default()
             });
@@ -2230,7 +2230,11 @@ mod tests {
             !explicit.use_cache,
             "an already-configured stage must disable its cache"
         );
-        assert_eq!(explicit.psm, 6, "disabling the cache must not touch an explicit PSM");
+        assert_eq!(
+            explicit.psm,
+            Some(6),
+            "disabling the cache must not touch an explicit PSM"
+        );
 
         let implicit = stages[1]
             .tesseract_config
@@ -2239,7 +2243,7 @@ mod tests {
         assert!(!implicit.use_cache);
         assert_eq!(
             implicit.psm,
-            crate::adapter::XBERG_WHOLE_IMAGE_TESSERACT_PSM,
+            Some(crate::adapter::XBERG_WHOLE_IMAGE_TESSERACT_PSM),
             "an implicit stage's materialized PSM must match xberg's own auto-selection for the \
              default language, or it would silently regress to PSM 3"
         );
@@ -2268,7 +2272,7 @@ mod tests {
         assert!(!tesseract.use_cache);
         assert_eq!(
             tesseract.psm,
-            crate::adapter::XBERG_WHOLE_IMAGE_TESSERACT_PSM,
+            Some(crate::adapter::XBERG_WHOLE_IMAGE_TESSERACT_PSM),
             "materialized PSM must match xberg's own auto-selection, or it would silently \
              regress to PSM 3"
         );
@@ -2285,7 +2289,7 @@ mod tests {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(xberg::TesseractConfig {
-                psm: 6,
+                psm: Some(6),
                 use_cache: true,
                 ..Default::default()
             }),
@@ -2300,7 +2304,11 @@ mod tests {
 
         let tesseract = config.ocr.unwrap().tesseract_config.unwrap();
         assert!(!tesseract.use_cache);
-        assert_eq!(tesseract.psm, 6, "disabling the cache must not touch an explicit PSM");
+        assert_eq!(
+            tesseract.psm,
+            Some(6),
+            "disabling the cache must not touch an explicit PSM"
+        );
         assert_eq!(tesseract.language, ["eng"], "language must still be refreshed");
     }
 
@@ -2548,7 +2556,7 @@ mod tests {
                 .tesseract_config
                 .expect("finalize_timed_ocr_result_cache must materialize a tesseract_config");
             assert!(!tesseract.use_cache);
-            assert_eq!(tesseract.psm, crate::adapter::XBERG_WHOLE_IMAGE_TESSERACT_PSM);
+            assert_eq!(tesseract.psm, Some(crate::adapter::XBERG_WHOLE_IMAGE_TESSERACT_PSM));
             assert_eq!(tesseract.language, ["deu", "eng"]);
             assert!(!config.force_ocr, "{} must retain fallback-only OCR", pipeline.name());
         }
@@ -2582,7 +2590,7 @@ mod tests {
             .tesseract_config
             .expect("finalize_timed_ocr_result_cache must materialize a tesseract_config");
         assert!(!tesseract.use_cache);
-        assert_eq!(tesseract.psm, crate::adapter::XBERG_VERTICAL_BLOCK_TESSERACT_PSM);
+        assert_eq!(tesseract.psm, Some(crate::adapter::XBERG_VERTICAL_BLOCK_TESSERACT_PSM));
         assert_eq!(tesseract.language, ["jpn_vert"]);
     }
 
@@ -2636,7 +2644,7 @@ mod tests {
         assert!(!tesseract.use_cache);
         assert_eq!(
             tesseract.psm,
-            crate::adapter::XBERG_VERTICAL_BLOCK_TESSERACT_PSM,
+            Some(crate::adapter::XBERG_VERTICAL_BLOCK_TESSERACT_PSM),
             "must materialize PSM 5 for jpn_vert, not PSM 11 from the stale stage language"
         );
         assert_eq!(tesseract.language, ["jpn_vert"]);
@@ -3314,7 +3322,7 @@ mod tests {
             assert_eq!(ocr.backend, "tesseract");
             assert_eq!(ocr.language, ["eng"]);
             assert_eq!(tesseract.language, ["eng"]);
-            assert_eq!(tesseract.psm, expected_psm);
+            assert_eq!(tesseract.psm, Some(expected_psm));
         }
     }
 
@@ -3377,7 +3385,7 @@ mod tests {
             .expect("segmentation preset must configure Tesseract");
         assert_eq!(ocr.language, ["jpn_vert"]);
         assert_eq!(tesseract.language, ["jpn_vert"]);
-        assert_eq!(tesseract.psm, TESSERACT_PSM_VERTICAL_BLOCK);
+        assert_eq!(tesseract.psm, Some(TESSERACT_PSM_VERTICAL_BLOCK));
     }
 
     #[test]

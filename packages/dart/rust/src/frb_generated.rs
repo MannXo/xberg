@@ -14469,7 +14469,7 @@ const _: fn() = || {
     {
         let TesseractConfig = None::<crate::TesseractConfig>.unwrap();
         let _: Vec<String> = TesseractConfig.language;
-        let _: i64 = TesseractConfig.psm;
+        let _: Option<i64> = TesseractConfig.psm;
         let _: String = TesseractConfig.output_format;
         let _: i64 = TesseractConfig.oem;
         let _: f64 = TesseractConfig.min_confidence;
@@ -24915,7 +24915,7 @@ impl SseDecode for crate::TesseractConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_language = <Vec<String>>::sse_decode(deserializer);
-        let mut var_psm = <i64>::sse_decode(deserializer);
+        let mut var_psm = <Option<i64>>::sse_decode(deserializer);
         let mut var_outputFormat = <String>::sse_decode(deserializer);
         let mut var_oem = <i64>::sse_decode(deserializer);
         let mut var_minConfidence = <f64>::sse_decode(deserializer);
@@ -41298,7 +41298,7 @@ impl SseEncode for crate::TesseractConfig {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <Vec<String>>::sse_encode(self.language, serializer);
-        <i64>::sse_encode(self.psm, serializer);
+        <Option<i64>>::sse_encode(self.psm, serializer);
         <String>::sse_encode(self.output_format, serializer);
         <i64>::sse_encode(self.oem, serializer);
         <f64>::sse_encode(self.min_confidence, serializer);

@@ -14719,14 +14719,14 @@ class PdfConfig {
   /// Ignored when `ContentFilterConfig.include_headers` is `true`.
   /// Effective nonzero margins require per-page OCR so geometry can be filtered;
   /// document-capable OCR backends use their image-processing path in that case.
-  /// Default: 0.06 (6%)
+  /// Default: 0.0 (disabled; set explicitly to filter header content)
   final double? topMarginFraction;
 
   /// Bottom margin fraction (0.0–1.0) of page height to exclude footers/page numbers.
   /// Ignored when `ContentFilterConfig.include_footers` is `true`.
   /// Effective nonzero margins require per-page OCR so geometry can be filtered;
   /// document-capable OCR backends use their image-processing path in that case.
-  /// Default: 0.05 (5%)
+  /// Default: 0.0 (disabled; set explicitly to filter footer content)
   final double? bottomMarginFraction;
 
   /// Allow single-column pseudo tables in extraction results.
@@ -17691,11 +17691,18 @@ class TesseractConfig {
 
   /// Page Segmentation Mode (0-13).
   ///
-  /// Common values:
-  /// - 3: Fully automatic page segmentation (native default)
-  /// - 6: Assume a single uniform block of text (WASM default — avoids layout-analysis hang)
+  /// `None` (the default) means the caller made no explicit choice: the extraction
+  /// pipeline applies its own context-appropriate PSM (whole-image PSM 11, vertical-
+  /// language PSM 5, layout-region PSM 6, or the sparse-text retry's PSM 3) exactly as
+  /// it would with no `TesseractConfig` at all — see issue #1573. Setting any other
+  /// field on this struct no longer changes that behaviour.
+  ///
+  /// Common explicit values:
+  /// - 3: Fully automatic page segmentation (native engine default)
+  /// - 6: Assume a single uniform block of text (WASM engine default — avoids
+  ///   layout-analysis hang)
   /// - 11: Sparse text with no particular order
-  final PlatformInt64 psm;
+  final PlatformInt64? psm;
 
   /// Output format ("text" or "markdown")
   final String outputFormat;
@@ -17770,7 +17777,7 @@ class TesseractConfig {
 
   const TesseractConfig({
     required this.language,
-    required this.psm,
+    this.psm,
     required this.outputFormat,
     required this.oem,
     required this.minConfidence,

@@ -1275,7 +1275,9 @@ fn validate_tesseract_tuning(tesseract_config: Option<&crate::types::TesseractCo
     let Some(tesseract_config) = tesseract_config else {
         return Ok(());
     };
-    crate::core::config_validation::validate_tesseract_psm(tesseract_config.psm)?;
+    if let Some(psm) = tesseract_config.psm {
+        crate::core::config_validation::validate_tesseract_psm(psm)?;
+    }
     crate::core::config_validation::validate_tesseract_oem(tesseract_config.oem)?;
     if let Some(ref preprocessing) = tesseract_config.preprocessing {
         crate::core::config_validation::validate_image_preprocessing_config(preprocessing)?;
@@ -1308,7 +1310,7 @@ mod tests {
 
     fn tesseract_config_with(psm: i32, oem: i32) -> crate::types::TesseractConfig {
         crate::types::TesseractConfig {
-            psm,
+            psm: Some(psm),
             oem,
             ..Default::default()
         }
@@ -1318,6 +1320,20 @@ mod tests {
     fn should_accept_ocr_config_when_tesseract_psm_and_oem_are_in_range() {
         let config = OcrConfig {
             tesseract_config: Some(tesseract_config_with(6, 1)),
+            ..Default::default()
+        };
+
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn should_accept_ocr_config_when_tesseract_psm_is_unset() {
+        let config = OcrConfig {
+            tesseract_config: Some(crate::types::TesseractConfig {
+                psm: None,
+                oem: 1,
+                ..Default::default()
+            }),
             ..Default::default()
         };
 

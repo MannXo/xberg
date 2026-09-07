@@ -133,7 +133,7 @@ fn test_ocr_psm_auto() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(TesseractConfig {
-                psm: 3,
+                psm: Some(3),
                 ..Default::default()
             }),
             ..Default::default()
@@ -162,7 +162,7 @@ fn test_ocr_psm_single_block() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(TesseractConfig {
-                psm: 6,
+                psm: Some(6),
                 ..Default::default()
             }),
             ..Default::default()
@@ -192,7 +192,7 @@ fn test_ocr_psm_single_line() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(TesseractConfig {
-                psm: 7,
+                psm: Some(7),
                 ..Default::default()
             }),
             ..Default::default()
@@ -507,7 +507,7 @@ fn test_complex_configuration_combination() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string()],
             tesseract_config: Some(TesseractConfig {
-                psm: 3,
+                psm: Some(3),
                 enable_table_detection: true,
                 table_min_confidence: 0.7,
                 language_model_ngram_on: true,

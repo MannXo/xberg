@@ -34,6 +34,35 @@ const TOUCHING_SPAN_BASELINE_TOLERANCE: f32 = 0.05;
 /// the larger of the two font sizes.
 const TOUCHING_SPAN_FONT_SIZE_TOLERANCE_RATIO: f32 = 0.01;
 
+/// Maximum baseline difference, in points, for two runs to count as one visual line rather
+/// than two lines split by a real line break.
+///
+/// ~keep Deliberately a second constant rather than an import of pipeline.rs's private
+/// `INLINE_STYLE_BASELINE_TOLERANCE` (same value, 0.5pt): that const also drives four
+/// unrelated inline-style-grouping call sites in pipeline.rs, and coupling this module to it
+/// would let an unrelated change there silently retune dehyphenation. xberg-io/xberg#1581 was
+/// caused by a THIRD, looser notion of "line break" living at the dehyphenation call sites in
+/// assembly.rs (no geometry check at all); this gives assembly.rs the same test pipeline.rs's
+/// `spans_visual_line_break` already applies, instead of a fourth definition.
+const LINE_BREAK_BASELINE_TOLERANCE: f32 = 0.5;
+
+/// True when `trailing` and `leading` sit on genuinely different visual lines rather than
+/// being two runs split mid-line by a style-run or font-resource boundary.
+///
+/// Used to gate hyphen-joining in `assembly.rs`: a suspended hyphen inside one line
+/// (`onderhouds- en`) must never be welded, while a hyphen that really trails a wrapped line
+/// must still be.
+pub(crate) fn crosses_visual_line_break(trailing: &SegmentData, leading: &SegmentData) -> bool {
+    if !trailing.has_same_rotation(leading) {
+        return false;
+    }
+    let trailing_baseline = trailing.upright_baseline();
+    let leading_baseline = leading.upright_baseline();
+    trailing_baseline.is_finite()
+        && leading_baseline.is_finite()
+        && (trailing_baseline - leading_baseline).abs() > LINE_BREAK_BASELINE_TOLERANCE
+}
+
 /// Returns true when `prev_seg`/`next_seg` are two halves of a single word split across a
 /// mid-word font-resource change (xberg-io/xberg#1566): same rotation frame, same baseline,
 /// same font size, a gap far below a genuine word space, and a word character immediately on

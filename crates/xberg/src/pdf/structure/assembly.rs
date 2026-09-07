@@ -5,7 +5,7 @@
 
 use std::borrow::Cow;
 
-use super::lines::{needs_space_between, segments_need_space};
+use super::lines::{crosses_visual_line_break, needs_space_between, segments_need_space};
 use super::text_repair::finalize_hyphens;
 use super::types::{LayoutHintClass, LayoutRegionPath, LayoutRegionTag, PdfParagraph};
 use crate::types::document_structure::{AnnotationKind, ContentLayer, TextAnnotation};
@@ -813,7 +813,7 @@ fn extract_text_and_annotations(para: &PdfParagraph) -> (String, Vec<TextAnnotat
             let prev_last = prev_seg.text.split_whitespace().next_back().unwrap_or("");
             let next_first = next_seg.text.split_whitespace().next().unwrap_or("");
 
-            if should_dehyphenate(prev_last, next_first) {
+            if should_dehyphenate(prev_last, next_first, prev_seg, next_seg) {
                 text.pop();
             } else if segments_need_space(prev_seg, prev_last, next_seg, next_first) {
                 text.push(' ');
@@ -825,7 +825,7 @@ fn extract_text_and_annotations(para: &PdfParagraph) -> (String, Vec<TextAnnotat
         for (wi, &(word, seg_idx)) in run_words.iter().enumerate() {
             if wi > 0 {
                 let (prev, prev_seg_idx) = run_words[wi - 1];
-                if should_dehyphenate(prev, word) {
+                if should_dehyphenate(prev, word, all_segments[prev_seg_idx], all_segments[seg_idx]) {
                     text.pop();
                 } else if prev_seg_idx == seg_idx {
                     if needs_space_between(prev, word) {
@@ -899,7 +899,7 @@ fn join_line_texts_plain(lines: &[super::types::PdfLine]) -> String {
                 continue;
             };
 
-            if should_dehyphenate(prev_word, word) {
+            if should_dehyphenate(prev_word, word, prev_seg, seg) {
                 result.pop();
                 result.push_str(word);
                 continue;
@@ -920,7 +920,16 @@ fn join_line_texts_plain(lines: &[super::types::PdfLine]) -> String {
 }
 
 /// Check if a line-ending hyphen should be removed and words joined.
-fn should_dehyphenate(prev: &str, next: &str) -> bool {
+///
+/// Requires `prev_seg`/`next_seg` to actually cross a visual line break (xberg-io/xberg#1581):
+/// without that check, a suspended hyphen mid-line ("onderhouds- en") matches the same text
+/// pattern as a genuine wrapped-line hyphen and gets welded regardless of position.
+fn should_dehyphenate(
+    prev: &str,
+    next: &str,
+    prev_seg: &crate::pdf::hierarchy::SegmentData,
+    next_seg: &crate::pdf::hierarchy::SegmentData,
+) -> bool {
     if prev.len() < 2 || !prev.ends_with('-') {
         return false;
     }
@@ -928,7 +937,10 @@ fn should_dehyphenate(prev: &str, next: &str) -> bool {
     if !before_hyphen.is_some_and(|c| c.is_alphabetic()) {
         return false;
     }
-    next.chars().next().is_some_and(|c| c.is_lowercase())
+    if !next.chars().next().is_some_and(|c| c.is_lowercase()) {
+        return false;
+    }
+    crosses_visual_line_break(prev_seg, next_seg)
 }
 
 /// Collapse runs of 2+ spaces inside a line while preserving leading indentation.
@@ -2338,5 +2350,115 @@ mod tests {
             "should allocate when spaces are collapsed"
         );
         assert_eq!(result, "  has extra spaces");
+    }
+
+    fn paragraph_text(document: &InternalDocument) -> &str {
+        document
+            .elements
+            .iter()
+            .find(|e| matches!(e.kind, ElementKind::Paragraph))
+            .map(|e| e.text.as_str())
+            .expect("a paragraph element should be emitted")
+    }
+
+    // xberg-io/xberg#1581: a suspended Dutch hyphen ("CV- en") welded into "CVen" because
+    // `should_dehyphenate` fired at the run boundary purely from the text pattern, without
+    // checking whether the two runs actually sit on different visual lines.
+    #[test]
+    fn suspended_hyphen_across_style_run_boundary_is_not_welded() {
+        let segments = vec![plain_segment("CV- "), bold_segment("en boiler")];
+        let line = PdfLine {
+            segments,
+            baseline_y: 700.0,
+            dominant_font_size: 12.0,
+            is_bold: false,
+            is_monospace: false,
+        };
+        let mut para = make_paragraph("", None);
+        para.lines = vec![line];
+
+        let document = assemble_internal_document(vec![vec![para]], &[], None, &[]);
+        assert_eq!(paragraph_text(&document), "CV- en boiler");
+    }
+
+    // xberg-io/xberg#1581: the same weld, but for two segments split mid-line within one
+    // style run (`onderhouds- en`), the site the issue traces to `join_line_texts_plain`'s
+    // preceding-word lookup and the same-run branch of `extract_text_and_annotations`.
+    #[test]
+    fn suspended_hyphen_within_one_style_run_is_not_welded() {
+        let segments = vec![
+            plain_segment("onderhouds- "),
+            plain_segment("en installatiewerkzaamheden"),
+        ];
+        let line = PdfLine {
+            segments,
+            baseline_y: 700.0,
+            dominant_font_size: 12.0,
+            is_bold: false,
+            is_monospace: false,
+        };
+        let mut para = make_paragraph("", None);
+        para.lines = vec![line];
+
+        let document = assemble_internal_document(vec![vec![para]], &[], None, &[]);
+        assert_eq!(paragraph_text(&document), "onderhouds- en installatiewerkzaamheden");
+    }
+
+    // Same defect via `join_line_texts_plain` (list items get their text from that path,
+    // not `extract_text_and_annotations`).
+    #[test]
+    fn suspended_hyphen_is_not_welded_in_list_item_plain_join() {
+        let segments = vec![plain_segment("montage- "), plain_segment("en installatiehandleiding")];
+        let line = PdfLine {
+            segments,
+            baseline_y: 700.0,
+            dominant_font_size: 12.0,
+            is_bold: false,
+            is_monospace: false,
+        };
+        let mut para = make_paragraph("", None);
+        para.lines = vec![line];
+        para.is_list_item = true;
+
+        let document = assemble_internal_document(vec![vec![para]], &[], None, &[]);
+        let item = document
+            .elements
+            .iter()
+            .find(|e| matches!(e.kind, ElementKind::ListItem { .. }))
+            .expect("list item should be emitted");
+        assert_eq!(item.text, "montage- en installatiehandleiding");
+    }
+
+    // The control from the issue's own reproducer: a genuine line-wrap hyphen, where the
+    // trailing and leading runs sit on different visual lines (baselines differ by more than
+    // the inline-style tolerance), must still be rejoined. A fix that stops all dehyphenation
+    // would pass the three tests above for the wrong reason.
+    #[test]
+    fn genuine_line_wrap_hyphen_still_joins_across_visual_line_break() {
+        let line1 = PdfLine {
+            segments: vec![SegmentData {
+                baseline_y: 700.0,
+                ..plain_segment("Zie de installatie-")
+            }],
+            baseline_y: 700.0,
+            dominant_font_size: 12.0,
+            is_bold: false,
+            is_monospace: false,
+        };
+        let line2 = PdfLine {
+            segments: vec![SegmentData {
+                baseline_y: 686.0,
+                ..plain_segment("handleiding voor details")
+            }],
+            baseline_y: 686.0,
+            dominant_font_size: 12.0,
+            is_bold: false,
+            is_monospace: false,
+        };
+        let mut para = make_paragraph("", None);
+        para.lines = vec![line1, line2];
+
+        let document = assemble_internal_document(vec![vec![para]], &[], None, &[]);
+        assert_eq!(paragraph_text(&document), "Zie de installatiehandleiding voor details");
     }
 }

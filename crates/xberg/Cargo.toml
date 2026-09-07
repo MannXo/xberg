@@ -1264,7 +1264,7 @@ crawlberg = { workspace = true, optional = true }
 dbase = { workspace = true, optional = true }
 dirs = "7"
 either = { version = "1", optional = true }
-encoding_rs = { version = "0.8.35" }
+encoding_rs = { version = "0.8.40" }
 fast_image_resize = { version = "6.1.0", optional = true }
 flate2 = { version = "1.1", optional = true }
 hayro-jbig2 = { version = "0.3", default-features = false, features = ["std"], optional = true }

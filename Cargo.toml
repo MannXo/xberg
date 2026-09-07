@@ -92,7 +92,7 @@ log = { version = "0.4", features = ["std"] }
 memmap2 = "0.9"
 mime = "0.3.17"
 minijinja = "2"
-nom-exif = { version = "3.7", default-features = false }
+nom-exif = { version = "3.8", default-features = false }
 num_cpus = "1.17.0"
 once_cell = "1.21.4"
 

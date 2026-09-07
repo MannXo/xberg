@@ -60,7 +60,7 @@ cc = "1.4"
 cfb = "0.14"
 chrono = "0.4"
 clap = { version = "4.6", features = ["derive", "color", "suggestions"] }
-comrak = { version = "0.54", default-features = false }
+comrak = { version = "0.55", default-features = false }
 console_error_panic_hook = "0.1"
 crawlberg = { version = "1.5.2", default-features = false }
 criterion = { version = "0.8", features = ["html_reports"] }

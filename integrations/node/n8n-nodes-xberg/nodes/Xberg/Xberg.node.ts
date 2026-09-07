@@ -40,7 +40,7 @@ const OUTPUT_MIME_TYPES: Record<string, string> = {
   djot: "text/plain",
   html: "text/html",
   json: "application/json",
-  structured: "application/json",
+  doctags: "text/plain",
 };
 
 const OUTPUT_EXTENSIONS: Record<string, string> = {
@@ -49,7 +49,7 @@ const OUTPUT_EXTENSIONS: Record<string, string> = {
   djot: "dj",
   html: "html",
   json: "json",
-  structured: "json",
+  doctags: "dt",
 };
 
 // A single extracted document as returned by the binding. Field types are kept
@@ -501,6 +501,10 @@ export class Xberg implements INodeType {
             value: "djot",
           },
           {
+            name: "DocTags",
+            value: "doctags",
+          },
+          {
             name: "HTML",
             value: "html",
           },
@@ -515,10 +519,6 @@ export class Xberg implements INodeType {
           {
             name: "Plain Text",
             value: "plain",
-          },
-          {
-            name: "Structured JSON",
-            value: "structured",
           },
         ],
         default: "markdown",

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+> **This release contains a breaking public API change.** `OutputFormat::Structured` is renamed to
+> `OutputFormat::DocTags`. Update any config, CLI invocation, or binding call using
+> `output_format = "structured"` to `"doctags"`.
+
+### Changed
+
+- **Breaking:** renamed `OutputFormat::Structured` to `OutputFormat::DocTags` across every binding
+  and the `output_format` config field. The rename shipped in 1.1.0 but was only alluded to there,
+  with no entry describing it; the variant was renamed, not removed, and is available as
+  `"doctags"`. An `output_format` of `"structured"` is not rejected — it resolves to a custom
+  renderer of that name, which is not registered.
+- **Breaking:** the TypeScript and WebAssembly `OutputFormat` type is a string union again
+  (`"plain" | "markdown" | "djot" | "html" | "json" | "doctags" | ...`), matching the serde wire
+  format shared with the CLI, REST, MCP, config-file, and Go surfaces. 1.1.0 briefly published an
+  object union (`{ type: "markdown" }`) for these two bindings only.
+
+### Fixed
+
+- Fixed PHP extension packaging, which produced no PIE archives for 1.1.0.
+- Fixed HEIC and AVIF decoding on the Linux (glibc) Node binding, which shipped a `libheif` built
+  with no HEVC or AV1 decoder at all — every `.heic` and `.avif` input failed to decode while the
+  `heic` feature still reported as present. The Elixir `linux-gnu` NIF carries the same working
+  codec closure.
+- Fixed Elixir NIF publishing for `linux-gnu` and Windows, which produced no artifacts for 1.1.0
+  and left the Hex package at 1.0.14. The `linux-gnu` NIF is now built against the glibc 2.28 floor
+  it claims to support; the artifacts published for 1.0.14 bundled HEIF codec libraries that
+  required a newer glibc.
+
 ## [1.1.0] - 2026-09-06
 
 > **This release contains breaking public API changes.** Entries prefixed **Breaking:** below remove

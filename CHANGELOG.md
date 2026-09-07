@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-09-07
+
 > **This release contains a breaking public API change.** `TesseractConfig.psm` is now optional.
 > Callers that read or set it as a plain integer must handle `None` / `null` — see below.
 

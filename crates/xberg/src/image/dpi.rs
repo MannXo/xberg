@@ -2,6 +2,11 @@
 const PDF_POINTS_PER_INCH: f64 = 72.0;
 
 /// Calculate smart DPI based on page dimensions, memory constraints, and target DPI
+// The only non-test caller is `image::preprocessing`, which is `ocr-pipeline`-gated.
+// `layout-detection` pulls this module in for `effective_pdf_render_dpi` alone (#1577), so
+// under `pdf + layout-detection` without `ocr-pipeline` this function is genuinely
+// unreachable and `-D warnings` fails the build on that leg. ~keep
+#[cfg_attr(not(any(feature = "ocr-pipeline", test)), allow(dead_code))]
 #[allow(clippy::cast_possible_truncation)]
 pub(crate) fn calculate_smart_dpi(
     page_width: f64,

@@ -7,7 +7,7 @@ fn main() {
             backend: "tesseract".to_string(),
             language: vec!["eng".to_string(), "fra".to_string()],
             tesseract_config: Some(TesseractConfig {
-                psm: 3,
+                psm: Some(3),
                 ..Default::default()
             }),
             ..Default::default()

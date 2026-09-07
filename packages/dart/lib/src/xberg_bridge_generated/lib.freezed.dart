@@ -13543,8 +13543,9 @@ class VlmFallbackPolicy_OnLowQuality extends VlmFallbackPolicy {
   const VlmFallbackPolicy_OnLowQuality({required this.qualityThreshold}): super._();
 
 
-/// Minimum acceptable quality score from the classical backend.
-/// Pages scoring below this are retried with VLM.
+/// Minimum acceptable quality score from the classical backend. Pages scoring below
+/// this are retried with VLM -- see this variant's doc comment for what "scoring"
+/// means here.
  final  double qualityThreshold;
 
 /// Create a copy of VlmFallbackPolicy

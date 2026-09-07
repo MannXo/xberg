@@ -9,6 +9,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2026-09-07
+
+> **This release contains a breaking public API change.** `TesseractConfig.psm` is now optional.
+> Callers that read or set it as a plain integer must handle `None` / `null` — see below.
+
+### Changed
+
+- **Breaking:** `TesseractConfig.psm` is now `Option<i32>` (`null`/`None`/absent in the bindings)
+  and defaults to unset rather than to 3. This fixes supplying a `TesseractConfig` at all acting
+  as a hidden behaviour switch: because several code paths keyed on the struct being absent, a
+  caller who set one unrelated field — table detection, a preprocessing knob — silently lost the
+  whole-image PSM 11, the vertical-language PSM 5, the layout-region PSM 6, and the sparse-text
+  retry, and got Tesseract's PSM 3 instead. `TesseractConfig()` with default fields is now a
+  no-op: the pipeline applies exactly the same automatic PSM it would with no `TesseractConfig`.
+  An explicitly set `psm` is still honoured. Bindings that model `psm` as a plain integer expose
+  a companion presence check (for example `xberg_tesseract_config_has_psm` in the C API), since a
+  bare integer cannot distinguish "unset" from a real `0`.
+
+### Fixed
+
+- Fixed a numbered or bulleted list on a scanned page being reconstructed as a table, replacing
+  the list text with a mangled grid. A candidate region whose first column is list markers
+  (`1.`, `a)`, `•`) end to end — the header cell included — is now rejected on the OCR routes.
+  A genuine numbered table is unaffected: its first column carries a header label (`Line`,
+  `Item`) above the numbers, which is what separates the two.
+- Fixed a table detected on a scanned page having its text returned twice — once as paragraphs,
+  once as table cells — in the document content and element tree. This affected every
+  `output_format`; `"plain"` only appeared to avoid it.
+- Fixed `PdfConfig.top_margin_fraction` / `bottom_margin_fraction` defaulting to 0.06/0.05
+  (6%/5%) since 1.1.0, which silently dropped OCR text — page titles included — in the top and
+  bottom bands of every default-config scanned PDF page with no warning. Both now default to
+  0.0 (disabled); set them explicitly to filter header/footer content. The nonzero defaults
+  also forced every default-config OCR page onto the lossy per-page route instead of a
+  document-capable backend's whole-document path; that routing is restored too.
+- Fixed rendered PDF pages losing the Tesseract backend's own `ProcessingWarning`s (including
+  the dictionary-filter removal notice) and OCR metadata (`psm`, `language`,
+  `tesseract_dict_invalid_word_ratio`), both of which reached the caller for a standalone image
+  but were silently dropped for the same page rendered from a PDF.
+- Fixed `OcrConfig.language` being discarded whenever a `TesseractConfig` was supplied, so a
+  German document was OCR'd in English. One precedence rule now governs both Tesseract backends
+  and the vertical-language check.
+- Fixed supplying any `ImageExtractionConfig` suppressing document-level OCR on scanned PDFs,
+  which returned empty pages with only a debug log.
+- Fixed rendered PDF pages ignoring the configured render DPI. `target_dpi`, `min_dpi`,
+  `max_dpi`, and `auto_adjust_dpi` are now honoured. With no configuration the default stays at
+  150 DPI, unchanged.
+- Fixed suspended hyphens being welded during text assembly, turning `onderhouds- en` into
+  `onderhoudsen`. A hyphen is now joined only across a genuine visual line break, matching the
+  rule the pipeline layer already applied.
+- Fixed an unruled full-width band in a ruled table being cut at column positions no rule gives
+  it, splitting headings mid-word. A column boundary now counts only where a vertical edge
+  actually spans the band.
+- Fixed every non-header table cell having its em-dashes, en-dashes and minus signs rewritten to an
+  ASCII hyphen, the spaces around a hyphen collapsed, `E-`/`E+` lowercased to `e-`/`e+`, and any
+  cell consisting solely of a dash emptied. That normalisation is correct for a numeric column (an
+  em-dash means nil, `1.5E-05` is an exponent, `- 3` is `-3`) but corrupted prose tables, turning
+  `Functionaliteit—12` into `Functionaliteit-12` and a part code `HRE - HReco` into `HRe-HReco`.
+  It is now applied only to columns whose data cells are predominantly numeric
+  ([#1582](https://github.com/xberg-io/xberg/issues/1582)).
+- Fixed the Windows PHP extension archives failing to publish at all. `vendor-windows-native-closure.ps1`
+  repacks a `.zip` with `Compress-Archive`, which runs no native command and so never sets
+  `$LASTEXITCODE`; the release workflow gated on it, and an unset `$LASTEXITCODE` compares as
+  non-zero, so every Windows archive was rejected immediately after being vendored successfully.
+  Combined with an all-or-nothing matrix gate that withheld the release's PHP assets whenever any
+  single leg failed, this left v1.1.0 and v1.1.1 with no PHP binaries at all. Both are fixed: the
+  script now sets its exit contract explicitly, matching its sibling scripts, and the upload job
+  now ships the archives from the legs that succeeded
+  ([#1585](https://github.com/xberg-io/xberg/issues/1585)).
+
 ## [1.1.1] - 2026-09-07
 
 > **This release contains a breaking public API change.** `OutputFormat::Structured` is renamed to

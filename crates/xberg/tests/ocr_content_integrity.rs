@@ -21,6 +21,7 @@ use helpers::extract_uri_document_blocking;
 
 use helpers::*;
 use xberg::core::config::{ExtractionConfig, OcrConfig, PageConfig};
+use xberg::types::TesseractConfig;
 
 /// Content must not be doubled when OCR is enabled.
 ///
@@ -135,6 +136,75 @@ fn test_ocr_page_content_matches_top_level_content() {
              Indicates word-dump appended to top-level content but missing from page — issue #706.",
             top_words,
             page_words,
+        );
+    }
+}
+
+/// A detected table's text must not also survive as ordinary paragraph text (issue #1571).
+///
+/// `hocr_document` is parsed from the raw hOCR before table detection runs, so nothing
+/// removes a table's words from it once `tables` is computed. Every consumer built from
+/// `internal_document` therefore carries the table's words twice: once as `tables[].markdown`
+/// and once as prose. Regression coverage for #706 above uses a table-free image and never
+/// exercises this path, so this test uses `images/simple_table.png` with table detection on.
+#[test]
+fn test_ocr_table_text_not_duplicated_in_content() {
+    if skip_if_missing("images/simple_table.png") {
+        return;
+    }
+
+    let file_path = get_test_file_path("images/simple_table.png");
+    let config = ExtractionConfig {
+        ocr: Some(OcrConfig {
+            backend: "tesseract".to_string(),
+            language: vec!["eng".to_string()],
+            tesseract_config: Some(TesseractConfig {
+                enable_table_detection: true,
+                table_min_confidence: 0.0,
+                // The default 50px column threshold is too tight for this fixture's font and
+                // splits it into extra spurious columns that fail `post_process_table`'s
+                // well-formedness check, so table detection never fires and the test can't
+                // reproduce #1571. 80px merges those back into the real 4 columns.
+                table_column_threshold: 80,
+                table_row_threshold_ratio: 0.5,
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
+        force_ocr: false,
+        use_cache: false,
+        ..Default::default()
+    };
+
+    let result = extract_uri_document_blocking(&file_path, None, &config).expect("OCR extraction must succeed");
+
+    assert!(
+        !result.tables.is_empty(),
+        "table detection must fire on this fixture for the test to exercise the #1571 path"
+    );
+
+    // Pick a distinctive cell value from the detected table and confirm it appears in
+    // `doc.content` only as many times as it appears across the table cells themselves
+    // (usually once) -- not once more as a duplicated paragraph outside the table.
+    let table = &result.tables[0];
+    let mut cell_values: Vec<&str> = table
+        .cells
+        .iter()
+        .flatten()
+        .map(String::as_str)
+        .filter(|cell| cell.trim().len() >= 3)
+        .collect();
+    cell_values.sort_unstable();
+    cell_values.dedup();
+
+    for cell in cell_values {
+        let occurrences_in_table_cells = table.cells.iter().flatten().filter(|c| c.as_str() == cell).count();
+        let occurrences_in_content = result.content.matches(cell).count();
+        assert!(
+            occurrences_in_content <= occurrences_in_table_cells,
+            "table cell {cell:?} appears {occurrences_in_content} times in doc.content but only \
+             {occurrences_in_table_cells} times among table cells -- its text is duplicated outside \
+             the table (issue #1571)",
         );
     }
 }

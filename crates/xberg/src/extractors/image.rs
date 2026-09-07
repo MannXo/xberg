@@ -1722,9 +1722,20 @@ impl ImageExtractor {
             // pass: multi-frame TIFF page tracking slices `content` by byte
             // offset and has no per-frame correspondence to hOCR elements, so it
             // keeps the flat paragraph-split fallback.
+            //
+            // `internal_doc.elements` can be legitimately empty even when OCR found
+            // text: `perform_ocr` (execution.rs) drops any hOCR paragraph entirely
+            // claimed by a detected table before this code ever sees it (#1571), and
+            // a page that is nothing but a table empties the list that way. Falling
+            // back to `ocr_extraction_result.content` in that case would resurrect
+            // the same table text as prose alongside the `OcrTable` pushed below --
+            // exactly the duplication being fixed. Once any table was detected, trust
+            // the (possibly empty) filtered element list instead of that fallback. ~keep
             let use_hocr_headings = ocr_extraction_result.page_contents.is_none();
+            let hocr_has_content_or_tables =
+                |internal_doc: &InternalDocument| !internal_doc.elements.is_empty() || !ocr_tables.is_empty();
             let mut doc = match &ocr_internal_document {
-                Some(internal_doc) if use_hocr_headings && !internal_doc.elements.is_empty() => {
+                Some(internal_doc) if use_hocr_headings && hocr_has_content_or_tables(internal_doc) => {
                     build_image_internal_document_from_hocr_elements(&internal_doc.elements)
                 }
                 _ => build_image_internal_document(Some(&ocr_extraction_result.content), None),

@@ -384,6 +384,44 @@ fn flatten_hocr_elements_to_text(elements: &[crate::types::internal::InternalEle
         .join("\n\n")
 }
 
+/// Drop hOCR paragraph elements whose text was already claimed by a detected table (#1571).
+///
+/// `hocr_document` is parsed straight from the raw hOCR before table detection runs, so
+/// nothing ever removes a table's words from it once `tables` is computed: every consumer
+/// built from `internal_document` (the PDF mixed/OCR-only routes and the standalone image
+/// route) receives the table's text twice, once as ordinary paragraphs and once as the
+/// `OcrTable`. `build_content_with_inline_tables` already solves this for the rendered
+/// `content` string using a word-centre-in-bbox test; apply the same test here at the
+/// paragraph level, using the paragraph's own bbox centre, so `internal_document` agrees
+/// with `content` regardless of `output_format` (the string rebuild above is skipped for
+/// Plain/Djot output, but the duplication it was masking is not). ~keep
+fn filter_elements_covered_by_tables(
+    elements: Vec<crate::types::internal::InternalElement>,
+    tables: &[OcrTable],
+) -> Vec<crate::types::internal::InternalElement> {
+    let table_bboxes: Vec<_> = tables.iter().filter_map(|t| t.bounding_box.as_ref()).collect();
+    if table_bboxes.is_empty() {
+        return elements;
+    }
+
+    elements
+        .into_iter()
+        .filter(|element| {
+            let Some(bbox) = element.bbox.as_ref() else {
+                return true;
+            };
+            let center_x = (bbox.x0 + bbox.x1) / 2.0;
+            let center_y = (bbox.y0 + bbox.y1) / 2.0;
+            !table_bboxes.iter().any(|table_bbox| {
+                center_x >= table_bbox.left as f64
+                    && center_x <= table_bbox.right as f64
+                    && center_y >= table_bbox.top as f64
+                    && center_y <= table_bbox.bottom as f64
+            })
+        })
+        .collect()
+}
+
 /// Minimum confidence for accepting orientation detection results.
 ///
 /// Keep in sync with `doc_orientation::MIN_CONFIDENCE` (module is feature-gated,
@@ -1757,6 +1795,10 @@ pub(super) fn perform_ocr(
         }
     }
 
+    if let Some(document) = hocr_document.as_mut() {
+        document.elements = filter_elements_covered_by_tables(std::mem::take(&mut document.elements), &tables);
+    }
+
     let mut content = strip_control_characters(&raw_content).into_owned();
     let retained_text = (config.output_format == "text").then_some(content.as_str());
     let iterator_extraction =
@@ -2508,6 +2550,87 @@ mod tests {
         assert!(
             !flattened.contains('#'),
             "flattened OCR text must contain no markdown heading syntax: {flattened:?}"
+        );
+    }
+
+    fn paragraph_with_bbox(text: &str, x0: f64, y0: f64, x1: f64, y1: f64) -> crate::types::internal::InternalElement {
+        let mut elem = crate::types::internal::InternalElement::text(ElementKind::Paragraph, text, 0);
+        elem.bbox = Some(crate::types::extraction::BoundingBox { x0, y0, x1, y1 });
+        elem
+    }
+
+    fn table_at(left: u32, top: u32, right: u32, bottom: u32) -> OcrTable {
+        OcrTable {
+            cells: vec![vec!["cell".to_string()]],
+            markdown: "| cell |".to_string(),
+            page_number: 1,
+            bounding_box: Some(OcrTableBoundingBox {
+                left,
+                top,
+                right,
+                bottom,
+            }),
+        }
+    }
+
+    #[test]
+    fn filter_elements_covered_by_tables_drops_paragraph_inside_table_bbox() {
+        // A paragraph whose bbox is fully inside (so its centre is inside) a detected
+        // table's bbox must be removed -- this is the #1571 duplication itself: the
+        // paragraph's words are also the table's cells.
+        let elements = vec![paragraph_with_bbox("Apple 50 10 00", 10.0, 10.0, 90.0, 30.0)];
+        let tables = vec![table_at(0, 0, 100, 100)];
+
+        let filtered = filter_elements_covered_by_tables(elements, &tables);
+
+        assert!(
+            filtered.is_empty(),
+            "paragraph centred inside the table bbox must be dropped"
+        );
+    }
+
+    #[test]
+    fn filter_elements_covered_by_tables_keeps_paragraph_adjacent_to_table() {
+        // Precision guard (#1571): a paragraph that merely overlaps a table's bbox edge,
+        // with its centre outside the bbox, must survive -- the word-centre rule must not
+        // over-delete prose that sits next to (not inside) a table.
+        let elements = vec![
+            paragraph_with_bbox("Vehicle Maintenance Guide", 10.0, 0.0, 90.0, 15.0),
+            paragraph_with_bbox("Apple 50 10 00", 10.0, 50.0, 90.0, 70.0),
+        ];
+        let tables = vec![table_at(0, 40, 100, 140)];
+
+        let filtered = filter_elements_covered_by_tables(elements, &tables);
+
+        assert_eq!(
+            filtered.len(),
+            1,
+            "only the paragraph centred inside the table bbox should be dropped"
+        );
+        assert_eq!(filtered[0].text, "Vehicle Maintenance Guide");
+    }
+
+    #[test]
+    fn filter_elements_covered_by_tables_is_noop_without_tables() {
+        let elements = vec![paragraph_with_bbox("Apple 50 10 00", 10.0, 10.0, 90.0, 30.0)];
+
+        let filtered = filter_elements_covered_by_tables(elements, &[]);
+
+        assert_eq!(filtered.len(), 1, "no tables detected means nothing should be filtered");
+    }
+
+    #[test]
+    fn filter_elements_covered_by_tables_keeps_elements_without_bbox() {
+        let mut elem = crate::types::internal::InternalElement::text(ElementKind::Paragraph, "no geometry", 0);
+        elem.bbox = None;
+        let tables = vec![table_at(0, 0, 100, 100)];
+
+        let filtered = filter_elements_covered_by_tables(vec![elem], &tables);
+
+        assert_eq!(
+            filtered.len(),
+            1,
+            "an element with no bbox cannot be tested against a table and must survive"
         );
     }
 

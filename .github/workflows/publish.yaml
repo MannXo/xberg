@@ -3106,7 +3106,13 @@ jobs:
   upload-php-pie-release:
     name: Upload PHP PIE archives to GitHub Release
     needs: [prepare, php-extension]
-    if: ${{ needs.prepare.outputs.is_tag == 'true' && needs.php-extension.result == 'success' }}
+    # php-extension is a fail-fast:false matrix (php x platform). Gating on
+    # result == 'success' discards every leg's archive -- including working
+    # ones -- whenever a single unrelated cell fails (xberg-io/xberg#1585:
+    # one Windows/php8.3 leg hit a transient upstream 504 and the whole PHP
+    # release went out with zero assets). Upload whatever legs did produce
+    # an artifact instead of requiring all of them to succeed. ~keep
+    if: ${{ !cancelled() && needs.prepare.outputs.is_tag == 'true' && needs.php-extension.result != 'skipped' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v3

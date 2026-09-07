@@ -59,6 +59,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed an unruled full-width band in a ruled table being cut at column positions no rule gives
   it, splitting headings mid-word. A column boundary now counts only where a vertical edge
   actually spans the band.
+- Fixed every non-header table cell having its em-dashes, en-dashes and minus signs rewritten to an
+  ASCII hyphen, the spaces around a hyphen collapsed, `E-`/`E+` lowercased to `e-`/`e+`, and any
+  cell consisting solely of a dash emptied. That normalisation is correct for a numeric column (an
+  em-dash means nil, `1.5E-05` is an exponent, `- 3` is `-3`) but corrupted prose tables, turning
+  `Functionaliteit—12` into `Functionaliteit-12` and a part code `HRE - HReco` into `HRe-HReco`.
+  It is now applied only to columns whose data cells are predominantly numeric
+  ([#1582](https://github.com/xberg-io/xberg/issues/1582)).
+- Fixed PHP PIE archives being withheld from a GitHub Release whenever a single leg of the
+  `php` x platform build matrix failed, so one unrelated transient failure suppressed all twelve
+  archives ([#1585](https://github.com/xberg-io/xberg/issues/1585)).
 
 ## [1.1.1] - 2026-09-07
 

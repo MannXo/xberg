@@ -534,7 +534,6 @@ config = ExtractionConfig(
     ocr=OcrConfig(
         tesseract_config=TesseractConfig(
             language=["eng", "deu"],  # English and German
-            psm=3,                    # Page segmentation mode: Auto
             oem=1                     # OCR Engine mode: LSTM neural net
         )
     ),

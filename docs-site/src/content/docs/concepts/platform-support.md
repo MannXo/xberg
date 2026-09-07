@@ -49,11 +49,11 @@ Legend: ✅ prebuilt shipped · ❌ not shipped · — not applicable
 4. **Zig** consumes the C FFI GitHub-release artifacts, so its platform coverage equals C FFI's.
 5. **Swift** targets Apple platforms only: macOS (Apple Silicon) and iOS (arm64). Intel-mac and
    iOS-simulator-x86_64 are excluded; no Linux or Windows SwiftPM artifact ships.
-6. **Kotlin/Android** ships the two Android ABIs: `arm64-v8a` (devices) and `x86_64` (emulator). The
-   x86_64-emulator native uses the ORT-free `android-target` feature set (no PaddleOCR or embeddings);
-   RT-DETR layout detection, the wired/wireless table classifier, and document-orientation detection
-   now run on the x86_64 emulator too, through the pure-Rust `tract` engine (see note 8) instead of
-   ORT. Arm64 devices get the full ORT-enabled build.
+6. **Kotlin/Android** ships the two Android ABIs: `arm64-v8a` (devices) and `x86_64` (emulator). Both
+   ABIs build with the same ORT-free `android-target` feature set (no PaddleOCR-via-ORT or ONNX
+   Runtime embeddings on either ABI); there is no separate ORT-enabled build for arm64 devices.
+   RT-DETR layout detection, the wired/wireless table classifier, PaddleOCR, and document-orientation
+   detection run on both ABIs through the pure-Rust `tract` engine (see note 8) instead of ORT.
 7. **WASM** is a single `wasm32` artifact, portable across any WASM runtime (browser and Node). It uses
    the `wasm-target` feature set (`ocr-wasm`, `excel-wasm`, `layout-tract`, `auto-rotate-tract`,
    `ner-candle-wasm`; no native ORT). Tree-sitter code intelligence is **excluded**: the 371-language

@@ -61,7 +61,7 @@ The Candle backends (GLM-OCR, TrOCR, DeepSeek-OCR, PaddleOCR-VL) ship compiled i
 | ---------------- | -------------------- | ----------------------------------- | --------------------------- | ------------------ | ---------------- | ----------------------- | ----------------------- | ------------------------ |
 | **Speed**        | Fast                 | Model-dependent                     | Fast on CPU                 | Moderate           | Moderate         | Moderate                | Moderate                | Slow (API latency)       |
 | **Accuracy**     | Good                 | Excellent                           | Good                        | Excellent          | Good             | Excellent               | Excellent               | Highest                  |
-| **Languages**    | 100+                 | 80+ (11 script families)            | 6 EasyOCR gen2 groups       | All               | 100+             | 20+ (CJK + Latin)       | 20+ (CJK + Latin)       | All (provider-dependent) |
+| **Languages**    | 100+                 | 80+ (11 script families)            | 8 EasyOCR gen2 groups       | All               | 100+             | 20+ (CJK + Latin)       | 20+ (CJK + Latin)       | All (provider-dependent) |
 | **Installation** | System package       | Built-in (native) or Python package | Built-in or Cargo feature   | Built-in           | Built-in         | Built-in                | Built-in                | API key only             |
 | **Model size**   | ~10 MB               | Mobile ~8 MB, Server ~120 MB        | Downloaded on first use     | ~3 GB              | ~250 MB          | ~4 GB                   | ~2.5 GB                 | None (cloud-hosted)      |
 | **GPU support**  | No                   | Yes                                 | No (CPU-only in Xberg 1.1) | Yes (Metal/CUDA)   | Yes (Metal/CUDA) | Yes (Metal/CUDA)        | Yes (Metal/CUDA)        | N/A (server-side)        |
@@ -800,7 +800,7 @@ xberg extract document.pdf --force-ocr true --ocr-backend candle-deepseek-ocr --
 
 ### Candle PaddleOCR-VL
 
-PaddleOCR-VL 1.5 — SigLIP vision encoder + Ernie-4.5 text decoder for lightweight multilingual document understanding. Markdown output.
+PaddleOCR-VL 1.6 — SigLIP vision encoder + Ernie-4.5 text decoder for lightweight multilingual document understanding. Markdown output.
 
 <Tabs syncKey="lang">
 <TabItem label="Native bindings (Rust, Go, TypeScript, Node.js, Java, C#, Ruby, PHP, Elixir)">

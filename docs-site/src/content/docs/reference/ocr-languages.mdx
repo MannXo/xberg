@@ -185,7 +185,7 @@ Fast text detection and recognition for 80+ languages across 11 script families.
 
 **Installation:** Built into Xberg via the `paddle-ocr` feature. Models download automatically on first use.
 
-**Selection:** Use `--ocr-language` or config `ocr.languages` with a single code or list. Join multiple codes with `+` for CLI: `--ocr-language en+de+zh_hans`.
+**Selection:** Use `--ocr-language` or config `ocr.language` with a single code or list. Join multiple codes with `+` for CLI: `--ocr-language en+de+zh_hans`.
 
 **Note:** PaddleOCR uses two-letter ISO 639-1 codes and script-specific variants (e.g., `zh_hans` for Simplified Chinese). Consult the [paddleocr-vl backend source](https://github.com/xberg-io/xberg/blob/main/crates/xberg/src/candle_ocr/paddleocr_vl_backend.rs) for the authoritative list.
 
@@ -382,13 +382,13 @@ Vision-language model combining SAM vision encoder, ViT/Qwen2, CLIP, and languag
 Language selection follows the configuration cascade (highest to lowest priority):
 
 1. **CLI flag:** `--ocr-language eng` or `--ocr-language eng+deu`
-2. **Inline JSON config:** `--config-json '{"ocr": {"languages": ["eng", "deu"]}}'`
+2. **Inline JSON config:** `--config-json '{"ocr": {"language": ["eng", "deu"]}}'`
 3. **Config file:** `xberg.toml` or `xberg.yaml`:
 
    ```toml
    [ocr]
    backend = "tesseract"
-   languages = ["eng", "deu", "fra"]
+   language = ["eng", "deu", "fra"]
    ```
 
 4. **Default:** Uses backend's default language behavior (usually English or auto-detect)
@@ -415,7 +415,7 @@ xberg extract --ocr-language eng+deu+fra file.pdf
 
 ```toml
 [ocr]
-languages = ["eng", "deu", "fra"]
+language = ["eng", "deu", "fra"]
 ```
 
 </TabItem>
@@ -424,7 +424,7 @@ languages = ["eng", "deu", "fra"]
 ```json
 {
   "ocr": {
-    "languages": ["eng", "deu", "fra"]
+    "language": ["eng", "deu", "fra"]
   }
 }
 ```

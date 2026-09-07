@@ -530,12 +530,11 @@ Hierarchy data is in `result.pages[n].hierarchy`. Each page has a `blocks` list:
 
 ### Configuration
 
-| Parameter                | Type            | Default | Description                                         |
-| ------------------------ | --------------- | ------- | --------------------------------------------------- |
-| `enabled`                | `bool`          | `true`  | Enable hierarchy extraction                         |
-| `k_clusters`             | `int`           | `3`     | Font size clusters (2–10), maps to heading levels   |
-| `include_bbox`           | `bool`          | `true`  | Include bounding box coordinates                    |
-| `ocr_coverage_threshold` | `float \| None` | `None`  | Trigger OCR if text coverage is below this fraction |
+| Parameter      | Type   | Default | Description                                       |
+| -------------- | ------ | ------- | -------------------------------------------------- |
+| `enabled`      | `bool` | `true`  | Enable hierarchy extraction                        |
+| `k_clusters`   | `int`  | `3`     | Font size clusters (1–7), maps to heading levels    |
+| `include_bbox` | `bool` | `true`  | Include bounding box coordinates                    |
 
 #### Choosing k_clusters
 
@@ -543,18 +542,7 @@ Hierarchy data is in `result.pages[n].hierarchy`. Each page has a `blocks` list:
 | ------------ | -------------- | --------------------------------------- |
 | 2–3 (default) | H1–H2         | Simple documents with 1–2 heading sizes |
 | 4–5           | H1–H4         | Standard documents                      |
-| 6             | H1–H6         | Most documents                          |
-| 7–8           | H1–H6+        | Books, specs with deep nesting          |
-
-#### Ocr_coverage_threshold
-
-| Threshold | Behavior                        |
-| --------- | ------------------------------- |
-| `None`    | OCR never triggered by coverage |
-| `0.3`     | OCR if < 30% of page has text   |
-| `0.5`     | OCR if < 50% of page has text   |
-
-Requires an OCR backend to be configured separately.
+| 6–7           | H1–H6+        | Books, specs with deep nesting          |
 
 ### Troubleshooting
 

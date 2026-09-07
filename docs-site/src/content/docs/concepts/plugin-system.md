@@ -95,7 +95,7 @@ OCR), XML, plain text, email, and Office formats (DOCX, PPTX).
 
 **Priority resolution.** When two extractors are registered for the same MIME
 type, the one with the higher `priority()` value wins. Every built-in extractor
-has a priority of 0. To override the built-in PDF extractor with your own,
+defaults to a priority of 50. To override the built-in PDF extractor with your own,
 register yours with a higher priority:
 
 ```rust title="override_builtin.rs"
@@ -137,14 +137,17 @@ declares a backend name and provides an async method to rank documents.
 
 See [`RerankerBackend`](/reference/types/) for the trait signature.
 
-Four backends ship out of the box:
+Four friendly presets ship out of the box, aliasing an underlying catalog of ONNX cross-encoder models:
 
-| Backend | Engine | Strengths |
+| Preset | Resolves to | Strengths |
 |---------|--------|-----------|
-| **fast** | Xenova/ms-marco-MiniLM-L-6-v2 (ONNX) | 22M params, <1 sec/10 docs, English only. |
-| **balanced** | Xenova/bge-reranker-base (ONNX) | 278M params, 1-2 sec/10 docs, English/Chinese. |
-| **quality** | Xenova/bge-reranker-large (ONNX) | 560M params, 2-3 sec/10 docs, English/Chinese, highest accuracy. |
-| **multilingual** | Xenova/bge-reranker-v2-m3 (ONNX) | 568M params, 100+ languages, 8192 token limit. |
+| **fast** | jina-reranker-v1-turbo-en | ~37M params, 8192 max-len, low-latency English reranking. |
+| **balanced** | ettin-reranker-150m | 150M params, ModernBERT long-context, English, high quality at cross-encoder latency. |
+| **quality** | bge-reranker-v2-m3 | 568M params, 100+ languages, 8192 max-len. |
+| **multilingual** | bge-reranker-v2-m3 | Same model as `quality` — 568M params, 100+ languages, 8192 max-len. |
+
+The catalog also exposes `bge-reranker-base` (278M params, English/Chinese) and
+`qwen3-reranker-0.6b` (generative reranker, multilingual) directly by name.
 
 Custom backends can wrap HuggingFace models, LLM APIs (Cohere, Jina, Voyage), or domain-specific
 rerankers. Unlike extraction, reranking is not part of the extraction pipeline — it's a query-time

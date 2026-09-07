@@ -257,9 +257,6 @@ enable_quality_processing = true
 backend = "tesseract"
 language = "eng"
 
-[ocr.tesseract_config]
-psm = 3
-
 [chunking]
 max_characters = 1000
 overlap = 100
@@ -274,8 +271,6 @@ enable_quality_processing: true
 ocr:
   backend: tesseract
   language: eng
-  tesseract_config:
-    psm: 3
 
 chunking:
   max_characters: 1000
@@ -290,10 +285,7 @@ chunking:
   "enable_quality_processing": true,
   "ocr": {
     "backend": "tesseract",
-    "language": "eng",
-    "tesseract_config": {
-      "psm": 3
-    }
+    "language": "eng"
   },
   "chunking": {
     "max_characters": 1000,

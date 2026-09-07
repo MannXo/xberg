@@ -8,7 +8,7 @@ Configuration precedence in Xberg follows this order (highest to lowest):
 2. **Configuration Files** - TOML, YAML, or JSON config files
 3. **Defaults** - Built-in sensible defaults
 
-This document covers all XBERG\_\* environment variables for version 4.3.8.
+This document covers all XBERG\_\* environment variables.
 
 ## When to Use Environment Variables
 

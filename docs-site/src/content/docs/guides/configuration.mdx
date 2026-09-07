@@ -98,9 +98,6 @@ enable_quality_processing = true
 [ocr]
 backend = "tesseract"
 language = "eng"
-
-[ocr.tesseract_config]
-psm = 3
 ```
 
 </TabItem>
@@ -113,8 +110,6 @@ enable_quality_processing: true
 ocr:
   backend: tesseract
   language: eng
-  tesseract_config:
-    psm: 3
 ```
 
 </TabItem>
@@ -126,10 +121,7 @@ ocr:
   "enable_quality_processing": true,
   "ocr": {
     "backend": "tesseract",
-    "language": "eng",
-    "tesseract_config": {
-      "psm": 3
-    }
+    "language": "eng"
   }
 }
 ```

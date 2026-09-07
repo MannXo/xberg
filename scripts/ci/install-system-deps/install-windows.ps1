@@ -1,5 +1,3 @@
-#!/usr/bin/env pwsh
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -143,6 +141,25 @@ else {
   Write-Host "✓ libheif/boost/zlib found in cache"
   $vcpkgRoot = if ($env:VCPKG_INSTALLATION_ROOT) { $env:VCPKG_INSTALLATION_ROOT } else { "C:\vcpkg" }
   Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$vcpkgRoot"
+}
+
+# Neither branch above proves zlib is on disk: the install path prints its "✓" whenever the
+# vcpkg call merely does not throw, and the cache path prints one unconditionally. When the port
+# is actually missing, nothing notices until `xberg-libwpd`'s build.rs probe finds no archive and
+# emits its deliberate loud-failure stem -- surfacing ~45 minutes later, in a different step, as
+# `rust-lld: could not open 'zlibstatic.lib'`, which reads like a wrong-library-name bug rather
+# than a missing dependency. That is how the Elixir NIF Windows leg failed for v1.1.0 and v1.1.1,
+# taking the Hex publish down with it. Check the artifact itself, using the same stem list
+# build.rs probes (crates/xberg-libwpd/build.rs ZLIB_RELEASE_STEMS). ~keep
+$zlibLibDir = Join-Path $vcpkgRoot "installed\x64-windows-static-md\lib"
+$zlibStems = @("zlibstatic", "zlib", "zs", "z")
+$zlibFound = $zlibStems | Where-Object { Test-Path (Join-Path $zlibLibDir "$_.lib") } | Select-Object -First 1
+if ($zlibFound) {
+  Write-Host "✓ zlib archive verified: $(Join-Path $zlibLibDir "$zlibFound.lib")"
+}
+else {
+  Write-Host "::error::no zlib archive ($($zlibStems -join '/')).lib found in $zlibLibDir -- vcpkg reported success but the port is not on disk; xberg-libwpd cannot link"
+  exit 1
 }
 
 Write-Host "Installing PHP..."

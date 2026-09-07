@@ -2263,9 +2263,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/elixir-natives staging
-          cp build-output/libxberg_nif.so staging/libxberg_nif.so
-          TARBALL="libxberg_nif-v${NIF_VERSION}-nif-${NIF_API}-${TARGET}.so.tar.gz"
-          tar -czf "dist/elixir-natives/${TARBALL}" -C staging libxberg_nif.so
+          # RustlerPrecompiled's `lib_name/4` expects the extracted file to carry the full
+          # versioned name, not the bare crate name -- the tarball name alone is not enough.
+          # The manylinux job below already renames; this one did not, so a musl artifact
+          # would have failed to load had musl ever been added to `nif_targets`. ~keep
+          RENAMED="libxberg_nif-v${NIF_VERSION}-nif-${NIF_API}-${TARGET}.so"
+          cp build-output/libxberg_nif.so "staging/${RENAMED}"
+          TARBALL="${RENAMED}.tar.gz"
+          tar -czf "dist/elixir-natives/${TARBALL}" -C staging "${RENAMED}"
           ( cd dist/elixir-natives && sha256sum "${TARBALL}" >"${TARBALL}.sha256" )
 
       - uses: actions/upload-artifact@v7

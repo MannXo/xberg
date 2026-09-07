@@ -1274,6 +1274,19 @@ jobs:
           php-ts: nts
           dry-run: ${{ needs.prepare.outputs.dry_run }}
 
+      # build-php-extension runs rewrite-native-deps, which strips `path =` from every
+      # root [workspace.dependencies] entry so deinherit_workspace() can copy literal
+      # values into the out-of-workspace crate. Past the build that mutation has no
+      # consumer -- the PIE archive holds only the built shared library -- but it leaves
+      # the root graph resolving BOTH a registry and a path copy of the
+      # `links = "xberg_libwpd"` crate, which cargo rejects. `alef publish package` below
+      # resolves `from_registry` source_crates via `cargo metadata` on this manifest and
+      # would trip over it. Scoped to PHP on purpose: python-sdist genuinely ships a
+      # manifest maturin resolves against the mutated root, so do not widen this. ~keep
+      - name: Restore workspace manifest after the out-of-workspace PHP build
+        shell: bash
+        run: git checkout -- Cargo.toml Cargo.lock
+
       # alef is a third-party tool. The job-wide `-D warnings` turns its own
       # lint warnings into build errors, which has no bearing on this repo. ~keep
       - uses: xberg-io/actions/install-alef@v1
@@ -1298,7 +1311,7 @@ jobs:
         shell: pwsh
         run: |
           Get-ChildItem -Path dist/php-package -Include "php_*.zip", "php_*.tgz" -Recurse | ForEach-Object {
-            & "${{ github.workspace }}\scripts\ci\vendor-windows-native-closure.ps1" -Archive $_.FullName -DllSourceDir "$env:ORT_LIB_LOCATION" -NativeGlob "php_xberg.dll"
+            & "${{ github.workspace }}\scripts\ci\vendor-windows-native-closure.ps1" -Archive $_.FullName -DllSourceDir "$env:ORT_LIB_LOCATION" -NativeGlob "xberg.dll"
             if ($LASTEXITCODE -ne 0) { throw "vendor-windows-native-closure failed for $($_.FullName)" }
             # Vendoring rewrites the archive bytes, so the .sha256 sidecar
             # package-php-pie already wrote is now stale -- regenerate it.
@@ -1313,7 +1326,7 @@ jobs:
         shell: pwsh
         run: |
           Get-ChildItem -Path dist/php-package -Include "php_*.zip", "php_*.tgz" -Recurse | ForEach-Object {
-            & "${{ github.workspace }}\scripts\ci\verify-windows-dll-closure.ps1" -Artifact $_.FullName -NativeGlob "php_xberg.dll"
+            & "${{ github.workspace }}\scripts\ci\verify-windows-dll-closure.ps1" -Artifact $_.FullName -NativeGlob "xberg.dll"
             if ($LASTEXITCODE -ne 0) { throw "verify-windows-dll-closure failed for $($_.FullName)" }
           }
 
@@ -2107,15 +2120,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-15, windows-latest]
+        os: [macos-15, windows-latest]
         nif: ["2.16"]
         include:
-          - os: ubuntu-latest
-            label: linux-x86_64
-            target: x86_64-unknown-linux-gnu
-          - os: ubuntu-24.04-arm
-            label: linux-aarch64
-            target: aarch64-unknown-linux-gnu
           - os: macos-15
             label: macos-arm64
             target: aarch64-apple-darwin
@@ -2129,11 +2136,6 @@ jobs:
           fetch-depth: 0
 
           submodules: false
-      - name: Override ImageOS on ARM Linux runners
-        if: matrix.os == 'ubuntu-24.04-arm'
-        shell: bash
-        run: echo "ImageOS=ubuntu24" >> "$GITHUB_ENV"
-
       - name: Override ImageOS on Windows runners
         if: runner.os == 'Windows'
         shell: bash
@@ -2151,31 +2153,18 @@ jobs:
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
 
-      - name: Setup Zig for glibc 2.28 floor
-        if: contains(matrix.target, '-linux-gnu')
-        uses: xberg-io/actions/setup-zig@v1
-
-      - name: Install cargo-zigbuild for glibc 2.28 floor
-        if: contains(matrix.target, '-linux-gnu')
-        shell: bash
-        run: command -v cargo-zigbuild || cargo install --locked cargo-zigbuild
-
-      - name: Build liblzma statically for glibc floor
-        if: contains(matrix.target, '-linux-gnu')
-        shell: bash
-        run: echo "LZMA_API_STATIC=1" >> "$GITHUB_ENV"
-
       - name: Disable sccache wrapper on Windows
         if: contains(matrix.target, 'windows')
         shell: bash
         run: echo "RUSTC_WRAPPER=" >> "$GITHUB_ENV"
 
-      # Was gated to `-linux-gnu` only, so Windows fell through to pyke's
-      # default download strategy, which always imports DirectML.dll on
-      # Windows (xberg-io/xberg#1456). Widen the gate to also run on Windows,
-      # forcing ORT_STRATEGY=system so that import is never introduced.
+      # Windows falls through to pyke's default download strategy, which
+      # always imports DirectML.dll on Windows (xberg-io/xberg#1456), so
+      # force ORT_STRATEGY=system so that import is never introduced. The
+      # linux-gnu legs of this matrix moved to elixir-natives-manylinux,
+      # which sets up ONNX Runtime inside its own Docker build instead.
       - name: Setup ONNX Runtime
-        if: contains(matrix.target, '-linux-gnu') || contains(matrix.target, 'windows')
+        if: contains(matrix.target, 'windows')
         uses: ./.github/actions/setup-onnx-runtime
         with:
           ort-version: "1.24.2"
@@ -2189,21 +2178,7 @@ jobs:
           package-dir: packages/elixir
           nif-version: ${{ needs.prepare.outputs.version }}
           nif-api-version: ${{ matrix.nif }}
-          glibc-version: ${{ contains(matrix.target, '-linux-gnu') && env.GLIBC_FLOOR || '' }}
           dry-run: ${{ needs.prepare.outputs.dry_run }}
-
-      - name: Ship + verify ONNX Runtime (glibc Linux)
-        if: contains(matrix.target, '-linux-gnu')
-        shell: bash
-        run: |
-          shopt -s nullglob
-          shipped=0
-          for t in dist/elixir-natives/*.tar.gz; do
-            shipped=1
-            bash scripts/ci/vendor-native-closure.sh "$t"
-            bash scripts/ci/verify-glibc-floor.sh "$t" "$GLIBC_FLOOR"
-          done
-          [ "$shipped" = 1 ] || echo "::notice::no artifact produced (dry-run stub); skipping ship+verify"
 
       # build-elixir-natives@v1 is an external action; vendor onto its OUTPUT
       # tarball rather than assume it bundles a co-located onnxruntime.dll,
@@ -2217,9 +2192,9 @@ jobs:
             Write-Host "::notice::no artifact produced (dry-run stub); skipping ship+verify"
           }
           foreach ($t in $tarballs) {
-            & "${{ github.workspace }}\scripts\ci\vendor-windows-native-closure.ps1" -Archive $t.FullName -DllSourceDir "$env:ORT_LIB_LOCATION" -NativeGlob "xberg_nif.dll"
+            & "${{ github.workspace }}\scripts\ci\vendor-windows-native-closure.ps1" -Archive $t.FullName -DllSourceDir "$env:ORT_LIB_LOCATION" -NativeGlob "libxberg_nif-*.dll"
             if ($LASTEXITCODE -ne 0) { throw "vendor-windows-native-closure failed for $($t.FullName)" }
-            & "${{ github.workspace }}\scripts\ci\verify-windows-dll-closure.ps1" -Artifact $t.FullName -NativeGlob "xberg_nif.dll"
+            & "${{ github.workspace }}\scripts\ci\verify-windows-dll-closure.ps1" -Artifact $t.FullName -NativeGlob "libxberg_nif-*.dll"
             if ($LASTEXITCODE -ne 0) { throw "verify-windows-dll-closure failed for $($t.FullName)" }
           }
 
@@ -2296,6 +2271,108 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: elixir-musl-${{ matrix.arch }}-nif-${{ matrix.nif }}
+          path: dist/elixir-natives/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  elixir-natives-manylinux:
+    name: Build Elixir NIF (${{ matrix.label }} nif-${{ matrix.nif }})
+    needs: [prepare, check-elixir-release, publish-crates]
+    if: ${{ !cancelled() && needs.publish-crates.result != 'failure' && needs.prepare.outputs.release_elixir == 'true' && (needs.check-elixir-release.outputs.exists != 'true' || needs.prepare.outputs.force_republish == 'true') }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux-x86_64
+            target: x86_64-unknown-linux-gnu
+            image: quay.io/pypa/manylinux_2_28_x86_64
+            nif: "2.16"
+          - os: ubuntu-24.04-arm
+            label: linux-aarch64
+            target: aarch64-unknown-linux-gnu
+            image: quay.io/pypa/manylinux_2_28_aarch64
+            nif: "2.16"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
+          fetch-depth: 0
+          submodules: false
+
+      # cargo-zigbuild (the linux-gnu approach used by build-elixir-natives@v1
+      # for every other NIF platform) only lowers the glibc floor of
+      # Rust-compiled objects. The `full` feature set pulls in libheif ->
+      # libde265/libaom/libx265/libnuma, vendored as prebuilt/system .so files
+      # by scripts/ci/vendor-native-closure.sh -- zigbuild never touches them,
+      # so they kept the ubuntu-24.04 runner's glibc 2.39 floor. Building
+      # inside manylinux_2_28 compiles that whole codec closure against glibc
+      # 2.28 instead; this mirrors node-bindings-manylinux, which runs the
+      # same verify-glibc-floor.sh check via docker/Dockerfile.manylinux-node
+      # and already passes it. ~keep
+      - name: Build Elixir NIF via manylinux Docker
+        if: ${{ needs.prepare.outputs.dry_run != 'true' }}
+        run: |
+          docker build -f docker/Dockerfile.manylinux-rustler \
+            --build-arg MANYLINUX_IMAGE=${{ matrix.image }} \
+            --build-arg TARGET=${{ matrix.target }} \
+            --output type=local,dest=./build-output .
+
+      # Reproduces xberg-io/actions/build-elixir-natives@v1's naming contract
+      # (scripts/build.py: lib{crate}-v{version}-nif-{api}-{target}.so[.tar.gz])
+      # by hand, since this leg bypasses that action. Unlike
+      # elixir-natives-musl's tarball (which ships libxberg_nif.so alone), the
+      # FULL vendored closure built inside the container ships beside the
+      # renamed .so -- verify-glibc-floor.sh below walks every .so in the
+      # tarball, and that vendored closure is exactly what was failing the
+      # floor check before this fix. ~keep
+      - name: Package NIF as RustlerPrecompiled tarball
+        if: ${{ needs.prepare.outputs.dry_run != 'true' }}
+        env:
+          TARGET: ${{ matrix.target }}
+          NIF_API: ${{ matrix.nif }}
+          NIF_VERSION: ${{ needs.prepare.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/elixir-natives staging
+          RENAMED="libxberg_nif-v${NIF_VERSION}-nif-${NIF_API}-${TARGET}.so"
+          cp build-output/libxberg_nif.so "staging/${RENAMED}"
+          find build-output -maxdepth 1 -name '*.so*' ! -name 'libxberg_nif.so' -exec cp {} staging/ \;
+          # ~keep A zero-match `find` exits 0 and would ship the NIF with no closure --
+          # verify-glibc-floor.sh would then pass trivially, having examined nothing.
+          # The closure is never empty: the NIF always links at least libonnxruntime.
+          vendored=$(find staging -maxdepth 1 -name '*.so*' ! -name "${RENAMED}" | wc -l)
+          echo "vendored ${vendored} library/libraries beside ${RENAMED}"
+          [ "$vendored" -gt 0 ] || { echo "::error::no vendored libraries in build-output" >&2; exit 1; }
+          TARBALL="${RENAMED}.tar.gz"
+          tar -czf "dist/elixir-natives/${TARBALL}" -C staging .
+          ( cd dist/elixir-natives && sha256sum "${TARBALL}" >"${TARBALL}.sha256" )
+
+      # Verify only -- do NOT re-run vendor-native-closure.sh here. The closure was
+      # already vendored inside the manylinux container against glibc 2.28; re-running
+      # it on the ubuntu-24.04 runner (glibc 2.39) would resolve any gap against the
+      # host and reintroduce the too-new libraries this job exists to avoid. ~keep
+      - name: Verify glibc floor over the container-vendored closure
+        shell: bash
+        run: |
+          shopt -s nullglob
+          shipped=0
+          for t in dist/elixir-natives/*.tar.gz; do
+            shipped=1
+            bash scripts/ci/verify-glibc-floor.sh "$t" "$GLIBC_FLOOR"
+          done
+          [ "$shipped" = 1 ] || echo "::notice::no artifact produced (dry-run stub); skipping ship+verify"
+
+      # Gate on dry_run, NOT on is_tag: publish.yaml synthesizes a dry-run tag,
+      # so `is_tag` is true on a dry run and would not skip anything. Matches
+      # the equivalent gate in the elixir-natives job. ~keep
+      - uses: actions/upload-artifact@v7
+        if: ${{ needs.prepare.outputs.dry_run != 'true' }}
+        with:
+          name: elixir-${{ matrix.label }}-nif-${{ matrix.nif }}
           path: dist/elixir-natives/*.tar.gz
           if-no-files-found: error
           retention-days: 14
@@ -2991,13 +3068,13 @@ jobs:
 
   upload-elixir-release:
     name: Upload Elixir NIF archives to GitHub Release
-    needs: [prepare, elixir-natives, elixir-natives-musl]
+    needs: [prepare, elixir-natives, elixir-natives-musl, elixir-natives-manylinux]
     # `is_tag` alone does NOT exclude a dry run -- prepare synthesizes
     # `v<version>-dryrun-<sha>`, so `is_tag` is true there too. Without the
     # dry_run test this job would start uploading release assets as soon as the
     # native builds stopped failing, and its download-artifact would find
     # nothing because the dry-run upload above is skipped. ~keep
-    if: ${{ needs.prepare.outputs.dry_run != 'true' && needs.prepare.outputs.is_tag == 'true' && (needs.elixir-natives.result == 'success' || needs.elixir-natives-musl.result == 'success') }}
+    if: ${{ needs.prepare.outputs.dry_run != 'true' && needs.prepare.outputs.is_tag == 'true' && (needs.elixir-natives.result == 'success' || needs.elixir-natives-musl.result == 'success' || needs.elixir-natives-manylinux.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v3

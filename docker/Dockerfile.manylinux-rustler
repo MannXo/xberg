@@ -1,0 +1,127 @@
+# =============================================================================
+ARG MANYLINUX_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
+FROM ${MANYLINUX_IMAGE} AS builder
+
+ARG RUST_TOOLCHAIN=nightly-2026-03-10
+ARG TARGET=x86_64-unknown-linux-gnu
+ARG ONNXRUNTIME_VERSION=1.24.2
+
+WORKDIR /build
+
+# The manylinux base images ship bash, so use it with `-o pipefail`: without it
+# the `curl ... | sh` rustup bootstrap below reports only sh's status (a failed
+# or truncated download would silently install nothing) and the readelf NEEDED
+# linkage assertion reports success on an empty pipe. (hadolint DL4006)
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN dnf -y install epel-release || \
+    dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+RUN dnf -y install \
+        cmake make pkgconfig git file curl \
+        openssl-devel \
+        libpng-devel libjpeg-turbo-devel libtiff-devel zlib-devel \
+        libaom-devel && \
+    dnf clean all
+
+# libde265 -- the HEIC decoder -- has NO EPEL 8 package on either arch, so the
+# previous `dnf install "$codec" || true` loop skipped it silently and libheif
+# came out reporting "HEIC: NO". Nothing read that cmake summary line, so the
+# build stayed green while the artifact could not decode a single .heic input.
+# Built from source here instead; the linkage is asserted after the libheif
+# build below rather than trusted. libaom DOES have an EPEL 8 package and
+# supplies AVIF decode. ~keep
+RUN cd /tmp && \
+    curl -fsSL -o libde265.tar.gz https://github.com/strukturag/libde265/releases/download/v1.1.2/libde265-1.1.2.tar.gz && \
+    tar -xzf libde265.tar.gz && \
+    cd libde265-1.1.2 && \
+    cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_INSTALL_LIBDIR=lib -DBUILD_SHARED_LIBS=ON -DENABLE_SDL=OFF && \
+    cmake --build build -j"$(nproc)" && \
+    cmake --install build && \
+    ldconfig && \
+    cd / && rm -rf /tmp/libde265*
+
+# Same glibc-2.28-safe libheif build as docker/Dockerfile.manylinux-node: the
+# Elixir NIF's `full` feature set pulls in libheif -> libde265/libaom, and
+# sourcing that codec closure here (from source, or from EPEL 8 which targets
+# RHEL 8's glibc 2.28) instead of vendoring the ubuntu-24.04 runner's glibc-2.39
+# system packages is what keeps scripts/ci/verify-glibc-floor.sh green for the
+# vendored closure, not just for the NIF's own compiled objects. ~keep
+RUN cd /tmp && \
+    export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig && \
+    curl -fsSL -o libheif.tar.gz https://github.com/strukturag/libheif/releases/download/v1.23.0/libheif-1.23.0.tar.gz && \
+    tar -xzf libheif.tar.gz && \
+    cd libheif-1.23.0 && \
+    cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_INSTALL_LIBDIR=lib -DWITH_EXAMPLES=OFF -DWITH_GDK_PIXBUF=OFF \
+        -DBUILD_TESTING=OFF \
+        -DWITH_X265=OFF -DWITH_AOM_ENCODER=OFF -DWITH_AOM_DECODER=ON && \
+    cmake --build build -j"$(nproc)" && \
+    cmake --install build && \
+    ldconfig && \
+    readelf -d /usr/local/lib/libheif.so.1 | grep -q libde265 && \
+    cd / && rm -rf /tmp/libheif*
+
+RUN mkdir -p /build/onnxruntime && \
+    if [ "$TARGET" = "aarch64-unknown-linux-gnu" ]; then ORT_ARCH="aarch64"; else ORT_ARCH="x64"; fi && \
+    curl -fL "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-${ORT_ARCH}-${ONNXRUNTIME_VERSION}.tgz" \
+        -o /build/onnxruntime.tgz && \
+    tar -xzf /build/onnxruntime.tgz -C /build/onnxruntime --strip-components=1 && \
+    cp /build/onnxruntime/lib/libonnxruntime.so* /usr/local/lib/ && \
+    ldconfig && \
+    rm /build/onnxruntime.tgz
+ENV ORT_LIB_LOCATION=/build/onnxruntime/lib \
+    ORT_PREFER_DYNAMIC_LINK=1 \
+    ORT_SKIP_DOWNLOAD=1 \
+    ORT_STRATEGY=system \
+    PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
+    LD_LIBRARY_PATH=/usr/local/lib
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+    | sh -s -- -y --default-toolchain "${RUST_TOOLCHAIN}" --component rust-src
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+COPY Cargo.toml Cargo.lock ./
+COPY crates/xberg/ crates/xberg/
+COPY crates/xberg-gliner/ crates/xberg-gliner/
+COPY crates/xberg-tesseract/ crates/xberg-tesseract/
+COPY crates/xberg-paddle-ocr/ crates/xberg-paddle-ocr/
+COPY crates/xberg-candle-ocr/ crates/xberg-candle-ocr/
+COPY crates/xberg-pdfium-render/ crates/xberg-pdfium-render/
+COPY crates/xberg-native-pdf/ crates/xberg-native-pdf/
+COPY crates/xberg-libheif/ crates/xberg-libheif/
+COPY crates/xberg-libwpd/ crates/xberg-libwpd/
+COPY packages/elixir/native/xberg_nif/ packages/elixir/native/xberg_nif/
+
+RUN sed -i '/xberg-py/d; /xberg_rb/d; /xberg-node/d; /xberg-cli/d; /xberg-ffi/d; /xberg-jni/d; /xberg-php/d; /xberg-rag/d; /packages\/dart\/rust/d; /packages\/swift\/rust/d; /"crates\/xberg-wasm"/d; /^\[profile\.release\.package\.xberg-wasm\]$/,$d; /benchmark-harness/d; /e2e-generator/d; /e2e\/rust/d' Cargo.toml
+
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=gcc \
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=gcc \
+    CC_x86_64_unknown_linux_gnu=gcc \
+    CXX_x86_64_unknown_linux_gnu=g++ \
+    CC_aarch64_unknown_linux_gnu=gcc \
+    CXX_aarch64_unknown_linux_gnu=g++
+
+RUN export RUSTFLAGS='-C link-arg=-Wl,-rpath,$ORIGIN' && \
+    rustup target add "${TARGET}" && \
+    cd packages/elixir/native/xberg_nif && \
+    cargo build --release --target "${TARGET}" && \
+    cp "target/${TARGET}/release/libxberg_nif.so" /build/libxberg_nif.so && \
+    strip /build/libxberg_nif.so
+
+COPY scripts/ci/vendor-native-closure.sh /usr/local/bin/vendor-native-closure.sh
+RUN bash /usr/local/bin/vendor-native-closure.sh /build/libxberg_nif.so
+
+RUN file /build/libxberg_nif.so && \
+    echo "=== Dynamic dependencies ===" && \
+    readelf -d /build/libxberg_nif.so 2>/dev/null | grep NEEDED && \
+    echo "=== Bundled libraries ===" && \
+    ls -la /build/*.so* && \
+    echo "=== Max GLIBC symbol version (floor) ===" && \
+    { objdump -T /build/libxberg_nif.so /build/*.so* 2>/dev/null | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -V | tail -1 || true; }
+
+FROM scratch
+COPY --from=builder /build/libxberg_nif.so /
+# `*.so*` (not `*.so`) matches versioned sonames like libonnxruntime.so.1 and
+# libheif.so.1, which a plain `*.so` glob silently drops. ~keep
+COPY --from=builder /build/*.so* /

@@ -182,9 +182,11 @@ def test_mime_detection(t: TestRunner) -> None:
 
 def test_extract_text(t: TestRunner) -> None:
     t.start("Extract plain text file")
-    out = t.run_cli_output("extract", "/data/text/contract.txt", volumes=True)
+    code, out = t.run_cli("extract", "/data/text/contract.txt", volumes=True)
     t.debug(f"Text extraction output (first 100 chars): {out[:100]}")
-    if len(out) > 15 and "contract" in out.lower():
+    if code != 0:
+        t.fail_test("Text extraction", f"Exit code {code}: {out[:300]}")
+    elif len(out) > 15 and "contract" in out.lower():
         t.pass_test()
     else:
         t.fail_test("Text extraction", f"Output too short ({len(out)} chars) or missing expected keywords")
@@ -302,7 +304,9 @@ def test_readonly_mount(t: TestRunner) -> None:
         timeout=60,
     )
     out = (r.stdout + r.stderr).strip()
-    if len(out) > 5:
+    if r.returncode != 0:
+        t.fail_test("Read-only mount", f"Exit code {r.returncode}: {out[:300]}")
+    elif len(out) > 5:
         t.pass_test()
     else:
         t.fail_test("Read-only mount", "Failed to extract with read-only filesystem")
@@ -790,7 +794,9 @@ def test_cli_batch_json(t: TestRunner) -> None:
     )
     out = (r.stdout + r.stderr).strip()
     t.debug(f"Batch command output (first 200 chars): {out[:200]}")
-    if len(out) > 100 and "content" in out:
+    if r.returncode != 0:
+        t.fail_test("CLI batch command", f"Exit code {r.returncode}: {out[:300]}")
+    elif len(out) > 100 and "content" in out:
         t.pass_test()
     else:
         t.fail_test("CLI batch command", "Output too short or malformed")

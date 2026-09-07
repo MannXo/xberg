@@ -40,6 +40,10 @@ const SPURIOUS_COLUMN_MIN_DATA_ROWS: usize = 20;
 const SPURIOUS_COLUMN_MIN_COLUMNS: usize = 6;
 const SPURIOUS_COLUMN_MIN_RETAINED_DENSITY_PERCENT: usize = 75;
 const FOOTER_MIN_ALPHA_PERCENT: usize = 70;
+/// Minimum percentage of a data column's non-ambiguous cells that must parse as a bare
+/// numeric literal (after dash-glyph normalisation) for the column to receive
+/// `normalize_data_cell`'s dash/exponent rewriting (xberg-io/xberg#1582).
+const NUMERIC_COLUMN_MIN_NUMERIC_PERCENT: usize = 60;
 
 #[cfg(feature = "pdf")]
 use super::hierarchy::SegmentData;
@@ -1061,9 +1065,23 @@ fn post_process_table_inner(
         *cell = text;
     }
 
+    // Gated per column, not applied to every data cell end to end: `normalize_data_cell`'s
+    // dash/exponent rewriting is correct for a financial column (an em-dash cell means nil,
+    // `1.5E-05` is scientific notation) and corrupts a prose column (`Functionaliteit—12`, a
+    // part code `HRE - HReco`). Row 0 already never reaches this loop, kept above (xberg-io/
+    // xberg#1582). ~keep
+    let numeric_columns: Vec<bool> = (0..processed[0].len())
+        .map(|col| column_is_numeric_for_normalization(&processed, col))
+        .collect();
+
     for row in processed.iter_mut().skip(1) {
-        for cell in row.iter_mut() {
-            normalize_data_cell(cell);
+        for (col, cell) in row.iter_mut().enumerate() {
+            if numeric_columns.get(col).copied().unwrap_or(false) {
+                normalize_data_cell(cell);
+            } else {
+                let trimmed = cell.trim().to_string();
+                *cell = trimmed;
+            }
         }
     }
 
@@ -2055,12 +2073,31 @@ fn drop_column_position(column_positions: Option<&mut Vec<u32>>, col: usize) {
 }
 
 fn normalize_data_cell(cell: &mut String) {
-    let mut text = cell.trim().to_string();
-    if text.is_empty() {
+    let trimmed = cell.trim();
+    if trimmed.is_empty() {
         cell.clear();
         return;
     }
 
+    let mut text = normalize_dash_glyphs_and_spacing(trimmed);
+    text = text.replace("E-", "e-").replace("E+", "e+");
+
+    if text == "-" {
+        text.clear();
+    }
+
+    *cell = text;
+}
+
+/// Rewrites em-dash, en-dash and minus-sign glyphs to an ASCII hyphen and collapses the
+/// whitespace `normalize_data_cell` expects around a leading or embedded hyphen (`"- 3"` ->
+/// `"-3"`), without the exponent lowercasing or lone-dash clearing that follow it. Shared
+/// with [`column_is_numeric_for_normalization`], which needs the same dash-normalised
+/// preview to decide whether a cell is numeric *before* `normalize_data_cell` runs on it —
+/// testing the raw, unnormalised text would miss `"- 3"`, which only reads as a number once
+/// this rewrite has run (xberg-io/xberg#1582). ~keep
+fn normalize_dash_glyphs_and_spacing(text: &str) -> String {
+    let mut text = text.to_string();
     for ch in ['\u{2014}', '\u{2013}', '\u{2212}'] {
         text = text.replace(ch, "-");
     }
@@ -2071,13 +2108,73 @@ fn normalize_data_cell(cell: &mut String) {
 
     text = text.replace("- ", "-");
     text = text.replace(" -", "-");
-    text = text.replace("E-", "e-").replace("E+", "e+");
+    text
+}
 
-    if text == "-" {
-        text.clear();
+/// Whether column `col`'s data rows (everything but the header) are predominantly bare
+/// numeric literals once dash glyphs are normalised — the gate that keeps
+/// `normalize_data_cell` off a prose column. A cell that is nothing but a dash is
+/// nil-or-N/A and cannot decide the question on its own, so it is excluded from the vote
+/// and left to the column's other cells (xberg-io/xberg#1582).
+fn column_is_numeric_for_normalization(table: &[Vec<String>], col: usize) -> bool {
+    let mut evidence = 0usize;
+    let mut numeric = 0usize;
+    for row in table.iter().skip(1) {
+        let Some(cell) = row.get(col) else { continue };
+        let trimmed = cell.trim();
+        if trimmed.is_empty() || is_lone_dash_cell(trimmed) {
+            continue;
+        }
+        evidence += 1;
+        if looks_like_numeric_literal(&normalize_dash_glyphs_and_spacing(trimmed)) {
+            numeric += 1;
+        }
     }
+    evidence > 0 && numeric.saturating_mul(100) >= evidence.saturating_mul(NUMERIC_COLUMN_MIN_NUMERIC_PERCENT)
+}
 
-    *cell = text;
+/// Whether `text` is nothing but one dash glyph (em, en, minus sign or ASCII hyphen) —
+/// ambiguous nil-or-N/A content that carries no evidence either way for
+/// [`column_is_numeric_for_normalization`].
+fn is_lone_dash_cell(text: &str) -> bool {
+    matches!(text, "-" | "\u{2014}" | "\u{2013}" | "\u{2212}")
+}
+
+/// Whether `text` — already run through [`normalize_dash_glyphs_and_spacing`] — is a bare
+/// numeric literal: an optional leading `-`, one or more digits with at most one `.`, and
+/// an optional exponent (`e`/`E`, optional sign, one or more digits). Anything containing a
+/// letter outside that exponent marker, or no digits at all, is not a number (xberg-io/
+/// xberg#1582).
+fn looks_like_numeric_literal(text: &str) -> bool {
+    let text = text.strip_prefix('-').unwrap_or(text);
+    let (mantissa, exponent) = match text.find(['e', 'E']) {
+        Some(index) => (&text[..index], Some(&text[index + 1..])),
+        None => (text, None),
+    };
+    if !is_numeric_mantissa(mantissa) {
+        return false;
+    }
+    exponent.is_none_or(|exp| {
+        let digits = exp.strip_prefix(['-', '+']).unwrap_or(exp);
+        !digits.is_empty() && digits.chars().all(|character| character.is_ascii_digit())
+    })
+}
+
+/// Whether `text` is one or more ASCII digits with at most one `.` separator.
+fn is_numeric_mantissa(text: &str) -> bool {
+    if text.is_empty() {
+        return false;
+    }
+    let mut seen_dot = false;
+    let mut seen_digit = false;
+    for character in text.chars() {
+        match character {
+            '0'..='9' => seen_digit = true,
+            '.' if !seen_dot => seen_dot = true,
+            _ => return false,
+        }
+    }
+    seen_digit
 }
 
 #[cfg(test)]
@@ -4195,6 +4292,150 @@ mod tests {
         assert!(
             result.is_none(),
             "a list with one mis-OCRed marker must still be rejected as prose flow"
+        );
+    }
+
+    /// A prose column's em-dash must survive table normalisation: `normalize_data_cell`'s
+    /// dash rewriting is correct for a financial column but not for a title welded to an
+    /// em-dash leader (xberg-io/xberg#1582).
+    #[test]
+    fn test_prose_column_em_dash_survives_table_normalization() {
+        let table = vec![
+            vec![
+                "Line".to_string(),
+                "Part Description".to_string(),
+                "Unit Price".to_string(),
+            ],
+            vec![
+                "1.".to_string(),
+                "Functionaliteit\u{2014}12".to_string(),
+                "$4.25".to_string(),
+            ],
+            vec![
+                "2.".to_string(),
+                "Anodized Aluminum Bracket".to_string(),
+                "$12.90".to_string(),
+            ],
+            vec![
+                "3.".to_string(),
+                "Rubber Grommet Assembly".to_string(),
+                "$1.15".to_string(),
+            ],
+            vec![
+                "4.".to_string(),
+                "Tempered Glass Panel".to_string(),
+                "$38.00".to_string(),
+            ],
+        ];
+        let processed = post_process_table(table, true, false).expect("headed prose+price table must be accepted");
+        assert_eq!(
+            processed[1][1], "Functionaliteit\u{2014}12",
+            "a prose cell's em-dash must not be rewritten to an ASCII hyphen"
+        );
+    }
+
+    /// A part code split by a spaced hyphen (`"HRE - HReco"`) must not be corrupted by the
+    /// numeric normaliser's `E-` -> `e-` rewrite, which is only correct inside a scientific
+    /// notation exponent (xberg-io/xberg#1582).
+    #[test]
+    fn test_prose_column_part_code_survives_table_normalization() {
+        let table = vec![
+            vec![
+                "Line".to_string(),
+                "Part Description".to_string(),
+                "Unit Price".to_string(),
+            ],
+            vec![
+                "1.".to_string(),
+                "Montagebeugel HRE - HReco".to_string(),
+                "$4.25".to_string(),
+            ],
+            vec![
+                "2.".to_string(),
+                "Anodized Aluminum Bracket".to_string(),
+                "$12.90".to_string(),
+            ],
+            vec![
+                "3.".to_string(),
+                "Rubber Grommet Assembly".to_string(),
+                "$1.15".to_string(),
+            ],
+            vec![
+                "4.".to_string(),
+                "Tempered Glass Panel".to_string(),
+                "$38.00".to_string(),
+            ],
+        ];
+        let processed = post_process_table(table, true, false).expect("headed prose+price table must be accepted");
+        assert_eq!(
+            processed[1][1], "Montagebeugel HRE - HReco",
+            "a part code must not be lowercased or have its hyphen spacing collapsed"
+        );
+    }
+
+    /// A prose cell whose entire content is a single em-dash means something in a document
+    /// (an unfilled field, "not applicable") and must not be silently emptied the way a nil
+    /// marker in a numeric column is (xberg-io/xberg#1582).
+    #[test]
+    fn test_prose_column_lone_em_dash_cell_is_not_emptied() {
+        let table = vec![
+            vec![
+                "Line".to_string(),
+                "Part Description".to_string(),
+                "Unit Price".to_string(),
+            ],
+            vec!["1.".to_string(), "\u{2014}".to_string(), "$4.25".to_string()],
+            vec![
+                "2.".to_string(),
+                "Anodized Aluminum Bracket".to_string(),
+                "$12.90".to_string(),
+            ],
+            vec![
+                "3.".to_string(),
+                "Rubber Grommet Assembly".to_string(),
+                "$1.15".to_string(),
+            ],
+            vec![
+                "4.".to_string(),
+                "Tempered Glass Panel".to_string(),
+                "$38.00".to_string(),
+            ],
+        ];
+        let processed = post_process_table(table, true, false).expect("headed prose+price table must be accepted");
+        assert_eq!(
+            processed[1][1], "\u{2014}",
+            "a lone em-dash in a prose column must not be cleared to an empty cell"
+        );
+    }
+
+    /// Regression: a genuine numeric/financial table must keep getting the full
+    /// normalisation — an em-dash nil cell emptied, `"- 3"` joined to `"-3"`, and a
+    /// scientific-notation exponent lowercased — exactly as before #1582.
+    #[test]
+    fn test_numeric_column_normalization_is_unchanged_by_prose_gate() {
+        let table = vec![
+            vec!["Item".to_string(), "2024".to_string(), "2023".to_string()],
+            vec!["Omzet".to_string(), "1234".to_string(), "1100".to_string()],
+            vec![
+                "Bijzondere baten".to_string(),
+                "\u{2014}".to_string(),
+                "- 3".to_string(),
+            ],
+            vec!["Meetfout".to_string(), "1.5E-05".to_string(), "2.0E-06".to_string()],
+            vec!["Afschrijving".to_string(), "-12".to_string(), "-9".to_string()],
+        ];
+        let processed = post_process_table(table, true, false).expect("financial table must be accepted");
+        assert_eq!(
+            processed[2],
+            vec!["Bijzondere baten".to_string(), String::new(), "-3".to_string()]
+        );
+        assert_eq!(
+            processed[3],
+            vec!["Meetfout".to_string(), "1.5e-05".to_string(), "2.0e-06".to_string()]
+        );
+        assert_eq!(
+            processed[4],
+            vec!["Afschrijving".to_string(), "-12".to_string(), "-9".to_string()]
         );
     }
 }

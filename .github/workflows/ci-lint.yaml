@@ -137,6 +137,23 @@ jobs:
       - name: Verify the Windows Ruby leg's features match the core bundle
         run: scripts/ci/check-ruby-windows-features.sh
 
+  csharp-abi-parity:
+    if: github.event.pull_request.draft != true
+    name: C# DllImports match the emitted header
+    runs-on: ubuntu-latest
+    steps:
+      # submodules: false -- reads the committed header, NativeMethods.cs and the RID
+      # template; no fixtures. ~keep
+      - uses: actions/checkout@v7
+        with:
+          submodules: false
+      # A DllImport arity is never checked against anything at build time, so a managed
+      # declaration that disagrees with the native one compiles clean and only misbehaves
+      # when the call runs. GH#1595 shipped that way: a six-parameter function called with
+      # three arguments, whose int32_t status was then dereferenced as a pointer. ~keep
+      - name: Compare every DllImport against xberg.h
+        run: python3 scripts/ci/check-csharp-abi-parity.py
+
   alef-readme-paths:
     if: github.event.pull_request.draft != true
     name: Alef readme/docs paths resolve

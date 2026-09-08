@@ -1111,6 +1111,9 @@ public func svgOptionsFromJson<GenericIntoRustString: IntoRustString>(_ json: Ge
 public func tableFromJson<GenericIntoRustString: IntoRustString>(_ json: GenericIntoRustString) throws -> Table {
     try { let val = __swift_bridge__$table_from_json({ let rustString = json.intoRustString(); rustString.isOwned = false; return rustString.ptr }()); if val.is_ok { return Table(ptr: val.ok_or_err!) } else { throw RustString(ptr: val.ok_or_err!) } }()
 }
+public func tableCellStyleFromJson<GenericIntoRustString: IntoRustString>(_ json: GenericIntoRustString) throws -> TableCellStyle {
+    try { let val = __swift_bridge__$table_cell_style_from_json({ let rustString = json.intoRustString(); rustString.isOwned = false; return rustString.ptr }()); if val.is_ok { return TableCellStyle(ptr: val.ok_or_err!) } else { throw RustString(ptr: val.ok_or_err!) } }()
+}
 public func tableDiffFromJson<GenericIntoRustString: IntoRustString>(_ json: GenericIntoRustString) throws -> TableDiff {
     try { let val = __swift_bridge__$table_diff_from_json({ let rustString = json.intoRustString(); rustString.isOwned = false; return rustString.ptr }()); if val.is_ok { return TableDiff(ptr: val.ok_or_err!) } else { throw RustString(ptr: val.ok_or_err!) } }()
 }
@@ -2067,6 +2070,9 @@ public func __alef_phantom_vec_table() -> RustVec<Table> {
 }
 public func __alef_phantom_vec_table_cell() -> RustVec<TableCell> {
     RustVec(ptr: __swift_bridge__$__alef_phantom_vec_table_cell())
+}
+public func __alef_phantom_vec_table_cell_style() -> RustVec<TableCellStyle> {
+    RustVec(ptr: __swift_bridge__$__alef_phantom_vec_table_cell_style())
 }
 public func __alef_phantom_vec_table_grid() -> RustVec<TableGrid> {
     RustVec(ptr: __swift_bridge__$__alef_phantom_vec_table_grid())
@@ -12677,6 +12683,14 @@ extension GridCellRef {
 
     public func bbox() -> Optional<BoundingBox> {
         { let val = __swift_bridge__$GridCell$bbox(ptr); if val != nil { return BoundingBox(ptr: val!) } else { return nil } }()
+    }
+
+    public func headingLevel() -> Optional<UInt8> {
+        __swift_bridge__$GridCell$heading_level(ptr).intoSwiftRepr()
+    }
+
+    public func styleName() -> Optional<RustString> {
+        { let val = __swift_bridge__$GridCell$style_name(ptr); if val != nil { return RustString(ptr: val!) } else { return nil } }()
     }
 }
 extension GridCell: Vectorizable {
@@ -24979,6 +24993,10 @@ extension TableRef {
         { let val = __swift_bridge__$Table$table_id(ptr); if val != nil { return RustString(ptr: val!) } else { return nil } }()
     }
 
+    public func cellStyles() -> RustVec<RustString> {
+        RustVec(ptr: __swift_bridge__$Table$cell_styles(ptr))
+    }
+
     public func columns() -> RustString {
         RustString(ptr: __swift_bridge__$Table$columns(ptr))
     }
@@ -25126,6 +25144,103 @@ extension TableCell: Vectorizable {
 
     public static func vecOfSelfLen(vecPtr: UnsafeMutableRawPointer) -> UInt {
         __swift_bridge__$Vec_TableCell$len(vecPtr)
+    }
+}
+
+
+public class TableCellStyle: TableCellStyleRefMut {
+    public var isOwned: Bool = true
+
+    public override init(ptr: UnsafeMutableRawPointer) {
+        super.init(ptr: ptr)
+    }
+
+    deinit {
+        if isOwned {
+            __swift_bridge__$TableCellStyle$_free(ptr)
+        }
+    }
+}
+extension TableCellStyle {
+    public convenience init<GenericIntoRustString: IntoRustString>(_ row: UInt32, _ col: UInt32, _ heading_level: Optional<UInt8>, _ style_name: Optional<GenericIntoRustString>) {
+        self.init(ptr: __swift_bridge__$TableCellStyle$new(row, col, heading_level.intoFfiRepr(), { if let rustString = optionalStringIntoRustString(style_name) { rustString.isOwned = false; return rustString.ptr } else { return nil } }()))
+    }
+}
+public class TableCellStyleRefMut: TableCellStyleRef {
+    public override init(ptr: UnsafeMutableRawPointer) {
+        super.init(ptr: ptr)
+    }
+}
+public class TableCellStyleRef {
+    public var ptr: UnsafeMutableRawPointer
+
+    public init(ptr: UnsafeMutableRawPointer) {
+        self.ptr = ptr
+    }
+}
+extension TableCellStyleRef {
+    public func row() -> UInt32 {
+        __swift_bridge__$TableCellStyle$row(ptr)
+    }
+
+    public func col() -> UInt32 {
+        __swift_bridge__$TableCellStyle$col(ptr)
+    }
+
+    public func headingLevel() -> Optional<UInt8> {
+        __swift_bridge__$TableCellStyle$heading_level(ptr).intoSwiftRepr()
+    }
+
+    public func styleName() -> Optional<RustString> {
+        { let val = __swift_bridge__$TableCellStyle$style_name(ptr); if val != nil { return RustString(ptr: val!) } else { return nil } }()
+    }
+}
+extension TableCellStyle: Vectorizable {
+    public static func vecOfSelfNew() -> UnsafeMutableRawPointer {
+        __swift_bridge__$Vec_TableCellStyle$new()
+    }
+
+    public static func vecOfSelfFree(vecPtr: UnsafeMutableRawPointer) {
+        __swift_bridge__$Vec_TableCellStyle$drop(vecPtr)
+    }
+
+    public static func vecOfSelfPush(vecPtr: UnsafeMutableRawPointer, value: TableCellStyle) {
+        __swift_bridge__$Vec_TableCellStyle$push(vecPtr, {value.isOwned = false; return value.ptr;}())
+    }
+
+    public static func vecOfSelfPop(vecPtr: UnsafeMutableRawPointer) -> Optional<Self> {
+        let pointer = __swift_bridge__$Vec_TableCellStyle$pop(vecPtr)
+        if pointer == nil {
+            return nil
+        } else {
+            return (TableCellStyle(ptr: pointer!) as! Self)
+        }
+    }
+
+    public static func vecOfSelfGet(vecPtr: UnsafeMutableRawPointer, index: UInt) -> Optional<TableCellStyleRef> {
+        let pointer = __swift_bridge__$Vec_TableCellStyle$get(vecPtr, index)
+        if pointer == nil {
+            return nil
+        } else {
+            return TableCellStyleRef(ptr: pointer!)
+        }
+    }
+
+    public static func vecOfSelfGetMut(vecPtr: UnsafeMutableRawPointer, index: UInt) -> Optional<TableCellStyleRefMut> {
+        let pointer = __swift_bridge__$Vec_TableCellStyle$get_mut(vecPtr, index)
+        if pointer == nil {
+            return nil
+        } else {
+            return TableCellStyleRefMut(ptr: pointer!)
+        }
+    }
+
+    public static func vecOfSelfAsPtr(vecPtr: UnsafeMutableRawPointer) -> UnsafePointer<TableCellStyleRef> {
+        UnsafePointer<TableCellStyleRef>(OpaquePointer(__swift_bridge__$Vec_TableCellStyle$as_ptr(vecPtr)))
+    }
+
+    public static func vecOfSelfLen(vecPtr: UnsafeMutableRawPointer) -> UInt {
+        __swift_bridge__$Vec_TableCellStyle$len(vecPtr)
     }
 }
 

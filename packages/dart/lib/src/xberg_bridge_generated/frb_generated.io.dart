@@ -1841,6 +1841,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Table> dco_decode_list_table(dynamic raw);
 
   @protected
+  List<TableCellStyle> dco_decode_list_table_cell_style(dynamic raw);
+
+  @protected
   List<TableDiff> dco_decode_list_table_diff(dynamic raw);
 
   @protected
@@ -2743,6 +2746,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TableCell dco_decode_table_cell(dynamic raw);
+
+  @protected
+  TableCellStyle dco_decode_table_cell_style(dynamic raw);
 
   @protected
   TableChunkingMode dco_decode_table_chunking_mode(dynamic raw);
@@ -4833,6 +4839,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<Table> sse_decode_list_table(SseDeserializer deserializer);
 
   @protected
+  List<TableCellStyle> sse_decode_list_table_cell_style(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<TableDiff> sse_decode_list_table_diff(SseDeserializer deserializer);
 
   @protected
@@ -5979,6 +5990,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   TableCell sse_decode_table_cell(SseDeserializer deserializer);
+
+  @protected
+  TableCellStyle sse_decode_table_cell_style(SseDeserializer deserializer);
 
   @protected
   TableChunkingMode sse_decode_table_chunking_mode(
@@ -8776,6 +8790,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_list_table(List<Table> self, SseSerializer serializer);
 
   @protected
+  void sse_encode_list_table_cell_style(
+    List<TableCellStyle> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_table_diff(
     List<TableDiff> self,
     SseSerializer serializer,
@@ -10214,6 +10234,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_table_cell(TableCell self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_table_cell_style(
+    TableCellStyle self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_table_chunking_mode(

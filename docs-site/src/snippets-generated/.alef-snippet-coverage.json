@@ -65,24 +65,12 @@
     "c/plugin_api/list_reranker_backends.md",
     "c/plugin_api/ocr_backends_clear.md",
     "c/plugin_api/ocr_backends_list.md",
-    "c/plugin_api/ocr_backends_unregister.md",
     "c/plugin_api/post_processors_clear.md",
     "c/plugin_api/post_processors_list.md",
-    "c/plugin_api/register_embedding_backend_trait_bridge.md",
-    "c/plugin_api/register_ocr_backend_trait_bridge.md",
-    "c/plugin_api/register_post_processor_trait_bridge.md",
-    "c/plugin_api/register_reranker_backend_trait_bridge.md",
-    "c/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "c/plugin_api/register_validator_trait_bridge.md",
     "c/plugin_api/renderers_clear.md",
     "c/plugin_api/renderers_list.md",
     "c/plugin_api/tokenizer_backends_clear.md",
     "c/plugin_api/tokenizer_backends_list.md",
-    "c/plugin_api/unregister_embedding_backend_after_register.md",
-    "c/plugin_api/unregister_post_processor_after_register.md",
-    "c/plugin_api/unregister_reranker_backend.md",
-    "c/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "c/plugin_api/unregister_validator_after_register.md",
     "c/plugin_api/validators_clear.md",
     "c/plugin_api/validators_list.md",
     "c/registry/list_embedding_backends.md",
@@ -169,24 +157,12 @@
     "csharp/plugin_api/list_reranker_backends.md",
     "csharp/plugin_api/ocr_backends_clear.md",
     "csharp/plugin_api/ocr_backends_list.md",
-    "csharp/plugin_api/ocr_backends_unregister.md",
     "csharp/plugin_api/post_processors_clear.md",
     "csharp/plugin_api/post_processors_list.md",
-    "csharp/plugin_api/register_embedding_backend_trait_bridge.md",
-    "csharp/plugin_api/register_ocr_backend_trait_bridge.md",
-    "csharp/plugin_api/register_post_processor_trait_bridge.md",
-    "csharp/plugin_api/register_reranker_backend_trait_bridge.md",
-    "csharp/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "csharp/plugin_api/register_validator_trait_bridge.md",
     "csharp/plugin_api/renderers_clear.md",
     "csharp/plugin_api/renderers_list.md",
     "csharp/plugin_api/tokenizer_backends_clear.md",
     "csharp/plugin_api/tokenizer_backends_list.md",
-    "csharp/plugin_api/unregister_embedding_backend_after_register.md",
-    "csharp/plugin_api/unregister_post_processor_after_register.md",
-    "csharp/plugin_api/unregister_reranker_backend.md",
-    "csharp/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "csharp/plugin_api/unregister_validator_after_register.md",
     "csharp/plugin_api/validators_clear.md",
     "csharp/plugin_api/validators_list.md",
     "csharp/registry/list_embedding_backends.md",
@@ -273,24 +249,12 @@
     "dart/plugin_api/list_reranker_backends.md",
     "dart/plugin_api/ocr_backends_clear.md",
     "dart/plugin_api/ocr_backends_list.md",
-    "dart/plugin_api/ocr_backends_unregister.md",
     "dart/plugin_api/post_processors_clear.md",
     "dart/plugin_api/post_processors_list.md",
-    "dart/plugin_api/register_embedding_backend_trait_bridge.md",
-    "dart/plugin_api/register_ocr_backend_trait_bridge.md",
-    "dart/plugin_api/register_post_processor_trait_bridge.md",
-    "dart/plugin_api/register_reranker_backend_trait_bridge.md",
-    "dart/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "dart/plugin_api/register_validator_trait_bridge.md",
     "dart/plugin_api/renderers_clear.md",
     "dart/plugin_api/renderers_list.md",
     "dart/plugin_api/tokenizer_backends_clear.md",
     "dart/plugin_api/tokenizer_backends_list.md",
-    "dart/plugin_api/unregister_embedding_backend_after_register.md",
-    "dart/plugin_api/unregister_post_processor_after_register.md",
-    "dart/plugin_api/unregister_reranker_backend.md",
-    "dart/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "dart/plugin_api/unregister_validator_after_register.md",
     "dart/plugin_api/validators_clear.md",
     "dart/plugin_api/validators_list.md",
     "dart/registry/list_embedding_backends.md",
@@ -377,24 +341,12 @@
     "elixir/plugin_api/list_reranker_backends.md",
     "elixir/plugin_api/ocr_backends_clear.md",
     "elixir/plugin_api/ocr_backends_list.md",
-    "elixir/plugin_api/ocr_backends_unregister.md",
     "elixir/plugin_api/post_processors_clear.md",
     "elixir/plugin_api/post_processors_list.md",
-    "elixir/plugin_api/register_embedding_backend_trait_bridge.md",
-    "elixir/plugin_api/register_ocr_backend_trait_bridge.md",
-    "elixir/plugin_api/register_post_processor_trait_bridge.md",
-    "elixir/plugin_api/register_reranker_backend_trait_bridge.md",
-    "elixir/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "elixir/plugin_api/register_validator_trait_bridge.md",
     "elixir/plugin_api/renderers_clear.md",
     "elixir/plugin_api/renderers_list.md",
     "elixir/plugin_api/tokenizer_backends_clear.md",
     "elixir/plugin_api/tokenizer_backends_list.md",
-    "elixir/plugin_api/unregister_embedding_backend_after_register.md",
-    "elixir/plugin_api/unregister_post_processor_after_register.md",
-    "elixir/plugin_api/unregister_reranker_backend.md",
-    "elixir/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "elixir/plugin_api/unregister_validator_after_register.md",
     "elixir/plugin_api/validators_clear.md",
     "elixir/plugin_api/validators_list.md",
     "elixir/registry/list_embedding_backends.md",
@@ -481,24 +433,12 @@
     "go/plugin_api/list_reranker_backends.md",
     "go/plugin_api/ocr_backends_clear.md",
     "go/plugin_api/ocr_backends_list.md",
-    "go/plugin_api/ocr_backends_unregister.md",
     "go/plugin_api/post_processors_clear.md",
     "go/plugin_api/post_processors_list.md",
-    "go/plugin_api/register_embedding_backend_trait_bridge.md",
-    "go/plugin_api/register_ocr_backend_trait_bridge.md",
-    "go/plugin_api/register_post_processor_trait_bridge.md",
-    "go/plugin_api/register_reranker_backend_trait_bridge.md",
-    "go/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "go/plugin_api/register_validator_trait_bridge.md",
     "go/plugin_api/renderers_clear.md",
     "go/plugin_api/renderers_list.md",
     "go/plugin_api/tokenizer_backends_clear.md",
     "go/plugin_api/tokenizer_backends_list.md",
-    "go/plugin_api/unregister_embedding_backend_after_register.md",
-    "go/plugin_api/unregister_post_processor_after_register.md",
-    "go/plugin_api/unregister_reranker_backend.md",
-    "go/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "go/plugin_api/unregister_validator_after_register.md",
     "go/plugin_api/validators_clear.md",
     "go/plugin_api/validators_list.md",
     "go/registry/list_embedding_backends.md",
@@ -585,24 +525,12 @@
     "java/plugin_api/list_reranker_backends.md",
     "java/plugin_api/ocr_backends_clear.md",
     "java/plugin_api/ocr_backends_list.md",
-    "java/plugin_api/ocr_backends_unregister.md",
     "java/plugin_api/post_processors_clear.md",
     "java/plugin_api/post_processors_list.md",
-    "java/plugin_api/register_embedding_backend_trait_bridge.md",
-    "java/plugin_api/register_ocr_backend_trait_bridge.md",
-    "java/plugin_api/register_post_processor_trait_bridge.md",
-    "java/plugin_api/register_reranker_backend_trait_bridge.md",
-    "java/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "java/plugin_api/register_validator_trait_bridge.md",
     "java/plugin_api/renderers_clear.md",
     "java/plugin_api/renderers_list.md",
     "java/plugin_api/tokenizer_backends_clear.md",
     "java/plugin_api/tokenizer_backends_list.md",
-    "java/plugin_api/unregister_embedding_backend_after_register.md",
-    "java/plugin_api/unregister_post_processor_after_register.md",
-    "java/plugin_api/unregister_reranker_backend.md",
-    "java/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "java/plugin_api/unregister_validator_after_register.md",
     "java/plugin_api/validators_clear.md",
     "java/plugin_api/validators_list.md",
     "java/registry/list_embedding_backends.md",
@@ -689,24 +617,12 @@
     "kotlin-android/plugin_api/list_reranker_backends.md",
     "kotlin-android/plugin_api/ocr_backends_clear.md",
     "kotlin-android/plugin_api/ocr_backends_list.md",
-    "kotlin-android/plugin_api/ocr_backends_unregister.md",
     "kotlin-android/plugin_api/post_processors_clear.md",
     "kotlin-android/plugin_api/post_processors_list.md",
-    "kotlin-android/plugin_api/register_embedding_backend_trait_bridge.md",
-    "kotlin-android/plugin_api/register_ocr_backend_trait_bridge.md",
-    "kotlin-android/plugin_api/register_post_processor_trait_bridge.md",
-    "kotlin-android/plugin_api/register_reranker_backend_trait_bridge.md",
-    "kotlin-android/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "kotlin-android/plugin_api/register_validator_trait_bridge.md",
     "kotlin-android/plugin_api/renderers_clear.md",
     "kotlin-android/plugin_api/renderers_list.md",
     "kotlin-android/plugin_api/tokenizer_backends_clear.md",
     "kotlin-android/plugin_api/tokenizer_backends_list.md",
-    "kotlin-android/plugin_api/unregister_embedding_backend_after_register.md",
-    "kotlin-android/plugin_api/unregister_post_processor_after_register.md",
-    "kotlin-android/plugin_api/unregister_reranker_backend.md",
-    "kotlin-android/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "kotlin-android/plugin_api/unregister_validator_after_register.md",
     "kotlin-android/plugin_api/validators_clear.md",
     "kotlin-android/plugin_api/validators_list.md",
     "kotlin-android/registry/list_embedding_backends.md",
@@ -793,24 +709,12 @@
     "php/plugin_api/list_reranker_backends.md",
     "php/plugin_api/ocr_backends_clear.md",
     "php/plugin_api/ocr_backends_list.md",
-    "php/plugin_api/ocr_backends_unregister.md",
     "php/plugin_api/post_processors_clear.md",
     "php/plugin_api/post_processors_list.md",
-    "php/plugin_api/register_embedding_backend_trait_bridge.md",
-    "php/plugin_api/register_ocr_backend_trait_bridge.md",
-    "php/plugin_api/register_post_processor_trait_bridge.md",
-    "php/plugin_api/register_reranker_backend_trait_bridge.md",
-    "php/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "php/plugin_api/register_validator_trait_bridge.md",
     "php/plugin_api/renderers_clear.md",
     "php/plugin_api/renderers_list.md",
     "php/plugin_api/tokenizer_backends_clear.md",
     "php/plugin_api/tokenizer_backends_list.md",
-    "php/plugin_api/unregister_embedding_backend_after_register.md",
-    "php/plugin_api/unregister_post_processor_after_register.md",
-    "php/plugin_api/unregister_reranker_backend.md",
-    "php/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "php/plugin_api/unregister_validator_after_register.md",
     "php/plugin_api/validators_clear.md",
     "php/plugin_api/validators_list.md",
     "php/registry/list_embedding_backends.md",
@@ -897,24 +801,12 @@
     "python/plugin_api/list_reranker_backends.md",
     "python/plugin_api/ocr_backends_clear.md",
     "python/plugin_api/ocr_backends_list.md",
-    "python/plugin_api/ocr_backends_unregister.md",
     "python/plugin_api/post_processors_clear.md",
     "python/plugin_api/post_processors_list.md",
-    "python/plugin_api/register_embedding_backend_trait_bridge.md",
-    "python/plugin_api/register_ocr_backend_trait_bridge.md",
-    "python/plugin_api/register_post_processor_trait_bridge.md",
-    "python/plugin_api/register_reranker_backend_trait_bridge.md",
-    "python/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "python/plugin_api/register_validator_trait_bridge.md",
     "python/plugin_api/renderers_clear.md",
     "python/plugin_api/renderers_list.md",
     "python/plugin_api/tokenizer_backends_clear.md",
     "python/plugin_api/tokenizer_backends_list.md",
-    "python/plugin_api/unregister_embedding_backend_after_register.md",
-    "python/plugin_api/unregister_post_processor_after_register.md",
-    "python/plugin_api/unregister_reranker_backend.md",
-    "python/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "python/plugin_api/unregister_validator_after_register.md",
     "python/plugin_api/validators_clear.md",
     "python/plugin_api/validators_list.md",
     "python/registry/list_embedding_backends.md",
@@ -1001,24 +893,12 @@
     "ruby/plugin_api/list_reranker_backends.md",
     "ruby/plugin_api/ocr_backends_clear.md",
     "ruby/plugin_api/ocr_backends_list.md",
-    "ruby/plugin_api/ocr_backends_unregister.md",
     "ruby/plugin_api/post_processors_clear.md",
     "ruby/plugin_api/post_processors_list.md",
-    "ruby/plugin_api/register_embedding_backend_trait_bridge.md",
-    "ruby/plugin_api/register_ocr_backend_trait_bridge.md",
-    "ruby/plugin_api/register_post_processor_trait_bridge.md",
-    "ruby/plugin_api/register_reranker_backend_trait_bridge.md",
-    "ruby/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "ruby/plugin_api/register_validator_trait_bridge.md",
     "ruby/plugin_api/renderers_clear.md",
     "ruby/plugin_api/renderers_list.md",
     "ruby/plugin_api/tokenizer_backends_clear.md",
     "ruby/plugin_api/tokenizer_backends_list.md",
-    "ruby/plugin_api/unregister_embedding_backend_after_register.md",
-    "ruby/plugin_api/unregister_post_processor_after_register.md",
-    "ruby/plugin_api/unregister_reranker_backend.md",
-    "ruby/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "ruby/plugin_api/unregister_validator_after_register.md",
     "ruby/plugin_api/validators_clear.md",
     "ruby/plugin_api/validators_list.md",
     "ruby/registry/list_embedding_backends.md",
@@ -1209,24 +1089,12 @@
     "swift/plugin_api/list_reranker_backends.md",
     "swift/plugin_api/ocr_backends_clear.md",
     "swift/plugin_api/ocr_backends_list.md",
-    "swift/plugin_api/ocr_backends_unregister.md",
     "swift/plugin_api/post_processors_clear.md",
     "swift/plugin_api/post_processors_list.md",
-    "swift/plugin_api/register_embedding_backend_trait_bridge.md",
-    "swift/plugin_api/register_ocr_backend_trait_bridge.md",
-    "swift/plugin_api/register_post_processor_trait_bridge.md",
-    "swift/plugin_api/register_reranker_backend_trait_bridge.md",
-    "swift/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "swift/plugin_api/register_validator_trait_bridge.md",
     "swift/plugin_api/renderers_clear.md",
     "swift/plugin_api/renderers_list.md",
     "swift/plugin_api/tokenizer_backends_clear.md",
     "swift/plugin_api/tokenizer_backends_list.md",
-    "swift/plugin_api/unregister_embedding_backend_after_register.md",
-    "swift/plugin_api/unregister_post_processor_after_register.md",
-    "swift/plugin_api/unregister_reranker_backend.md",
-    "swift/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "swift/plugin_api/unregister_validator_after_register.md",
     "swift/plugin_api/validators_clear.md",
     "swift/plugin_api/validators_list.md",
     "swift/registry/list_embedding_backends.md",
@@ -1313,24 +1181,12 @@
     "typescript/plugin_api/list_reranker_backends.md",
     "typescript/plugin_api/ocr_backends_clear.md",
     "typescript/plugin_api/ocr_backends_list.md",
-    "typescript/plugin_api/ocr_backends_unregister.md",
     "typescript/plugin_api/post_processors_clear.md",
     "typescript/plugin_api/post_processors_list.md",
-    "typescript/plugin_api/register_embedding_backend_trait_bridge.md",
-    "typescript/plugin_api/register_ocr_backend_trait_bridge.md",
-    "typescript/plugin_api/register_post_processor_trait_bridge.md",
-    "typescript/plugin_api/register_reranker_backend_trait_bridge.md",
-    "typescript/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "typescript/plugin_api/register_validator_trait_bridge.md",
     "typescript/plugin_api/renderers_clear.md",
     "typescript/plugin_api/renderers_list.md",
     "typescript/plugin_api/tokenizer_backends_clear.md",
     "typescript/plugin_api/tokenizer_backends_list.md",
-    "typescript/plugin_api/unregister_embedding_backend_after_register.md",
-    "typescript/plugin_api/unregister_post_processor_after_register.md",
-    "typescript/plugin_api/unregister_reranker_backend.md",
-    "typescript/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "typescript/plugin_api/unregister_validator_after_register.md",
     "typescript/plugin_api/validators_clear.md",
     "typescript/plugin_api/validators_list.md",
     "typescript/registry/list_embedding_backends.md",
@@ -1417,24 +1273,12 @@
     "wasm/plugin_api/list_reranker_backends.md",
     "wasm/plugin_api/ocr_backends_clear.md",
     "wasm/plugin_api/ocr_backends_list.md",
-    "wasm/plugin_api/ocr_backends_unregister.md",
     "wasm/plugin_api/post_processors_clear.md",
     "wasm/plugin_api/post_processors_list.md",
-    "wasm/plugin_api/register_embedding_backend_trait_bridge.md",
-    "wasm/plugin_api/register_ocr_backend_trait_bridge.md",
-    "wasm/plugin_api/register_post_processor_trait_bridge.md",
-    "wasm/plugin_api/register_reranker_backend_trait_bridge.md",
-    "wasm/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "wasm/plugin_api/register_validator_trait_bridge.md",
     "wasm/plugin_api/renderers_clear.md",
     "wasm/plugin_api/renderers_list.md",
     "wasm/plugin_api/tokenizer_backends_clear.md",
     "wasm/plugin_api/tokenizer_backends_list.md",
-    "wasm/plugin_api/unregister_embedding_backend_after_register.md",
-    "wasm/plugin_api/unregister_post_processor_after_register.md",
-    "wasm/plugin_api/unregister_reranker_backend.md",
-    "wasm/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "wasm/plugin_api/unregister_validator_after_register.md",
     "wasm/plugin_api/validators_clear.md",
     "wasm/plugin_api/validators_list.md",
     "wasm/registry/list_embedding_backends.md",
@@ -1521,24 +1365,12 @@
     "zig/plugin_api/list_reranker_backends.md",
     "zig/plugin_api/ocr_backends_clear.md",
     "zig/plugin_api/ocr_backends_list.md",
-    "zig/plugin_api/ocr_backends_unregister.md",
     "zig/plugin_api/post_processors_clear.md",
     "zig/plugin_api/post_processors_list.md",
-    "zig/plugin_api/register_embedding_backend_trait_bridge.md",
-    "zig/plugin_api/register_ocr_backend_trait_bridge.md",
-    "zig/plugin_api/register_post_processor_trait_bridge.md",
-    "zig/plugin_api/register_reranker_backend_trait_bridge.md",
-    "zig/plugin_api/register_tokenizer_backend_trait_bridge.md",
-    "zig/plugin_api/register_validator_trait_bridge.md",
     "zig/plugin_api/renderers_clear.md",
     "zig/plugin_api/renderers_list.md",
     "zig/plugin_api/tokenizer_backends_clear.md",
     "zig/plugin_api/tokenizer_backends_list.md",
-    "zig/plugin_api/unregister_embedding_backend_after_register.md",
-    "zig/plugin_api/unregister_post_processor_after_register.md",
-    "zig/plugin_api/unregister_reranker_backend.md",
-    "zig/plugin_api/unregister_tokenizer_backend_after_register.md",
-    "zig/plugin_api/unregister_validator_after_register.md",
     "zig/plugin_api/validators_clear.md",
     "zig/plugin_api/validators_list.md",
     "zig/registry/list_embedding_backends.md",
@@ -2333,18 +2165,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "c"
-      },
-      "path": "c/plugin_api/ocr_backends_unregister.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "c"
       },
@@ -2361,78 +2181,6 @@
         "language": "c"
       },
       "path": "c/plugin_api/post_processors_list.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "c"
-      },
-      "path": "c/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "c"
-      },
-      "path": "c/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "c"
-      },
-      "path": "c/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "c"
-      },
-      "path": "c/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "c"
-      },
-      "path": "c/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "c"
-      },
-      "path": "c/plugin_api/register_validator_trait_bridge.md",
       "language": "c",
       "target": "c",
       "session": "c",
@@ -2481,66 +2229,6 @@
         "language": "c"
       },
       "path": "c/plugin_api/tokenizer_backends_list.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "c"
-      },
-      "path": "c/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "c"
-      },
-      "path": "c/plugin_api/unregister_post_processor_after_register.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "c"
-      },
-      "path": "c/plugin_api/unregister_reranker_backend.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "c"
-      },
-      "path": "c/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "c",
-      "target": "c",
-      "session": "c",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "c"
-      },
-      "path": "c/plugin_api/unregister_validator_after_register.md",
       "language": "c",
       "target": "c",
       "session": "c",
@@ -3581,18 +3269,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/ocr_backends_unregister.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "csharp"
       },
@@ -3609,78 +3285,6 @@
         "language": "csharp"
       },
       "path": "csharp/plugin_api/post_processors_list.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/register_validator_trait_bridge.md",
       "language": "csharp",
       "target": "csharp",
       "session": "csharp",
@@ -3729,66 +3333,6 @@
         "language": "csharp"
       },
       "path": "csharp/plugin_api/tokenizer_backends_list.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/unregister_post_processor_after_register.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/unregister_reranker_backend.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "csharp",
-      "target": "csharp",
-      "session": "csharp",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "csharp"
-      },
-      "path": "csharp/plugin_api/unregister_validator_after_register.md",
       "language": "csharp",
       "target": "csharp",
       "session": "csharp",
@@ -4829,18 +4373,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/ocr_backends_unregister.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "dart"
       },
@@ -4857,78 +4389,6 @@
         "language": "dart"
       },
       "path": "dart/plugin_api/post_processors_list.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/register_validator_trait_bridge.md",
       "language": "dart",
       "target": "dart",
       "session": "dart",
@@ -4977,66 +4437,6 @@
         "language": "dart"
       },
       "path": "dart/plugin_api/tokenizer_backends_list.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/unregister_post_processor_after_register.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/unregister_reranker_backend.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "dart",
-      "target": "dart",
-      "session": "dart",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "dart"
-      },
-      "path": "dart/plugin_api/unregister_validator_after_register.md",
       "language": "dart",
       "target": "dart",
       "session": "dart",
@@ -6077,18 +5477,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/ocr_backends_unregister.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "elixir"
       },
@@ -6105,78 +5493,6 @@
         "language": "elixir"
       },
       "path": "elixir/plugin_api/post_processors_list.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/register_validator_trait_bridge.md",
       "language": "elixir",
       "target": "elixir",
       "session": "elixir",
@@ -6225,66 +5541,6 @@
         "language": "elixir"
       },
       "path": "elixir/plugin_api/tokenizer_backends_list.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/unregister_post_processor_after_register.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/unregister_reranker_backend.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "elixir",
-      "target": "elixir",
-      "session": "elixir",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "elixir"
-      },
-      "path": "elixir/plugin_api/unregister_validator_after_register.md",
       "language": "elixir",
       "target": "elixir",
       "session": "elixir",
@@ -7325,18 +6581,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "go"
-      },
-      "path": "go/plugin_api/ocr_backends_unregister.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "go"
       },
@@ -7353,78 +6597,6 @@
         "language": "go"
       },
       "path": "go/plugin_api/post_processors_list.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "go"
-      },
-      "path": "go/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "go"
-      },
-      "path": "go/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "go"
-      },
-      "path": "go/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "go"
-      },
-      "path": "go/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "go"
-      },
-      "path": "go/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "go"
-      },
-      "path": "go/plugin_api/register_validator_trait_bridge.md",
       "language": "go",
       "target": "go",
       "session": "go",
@@ -7473,66 +6645,6 @@
         "language": "go"
       },
       "path": "go/plugin_api/tokenizer_backends_list.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "go"
-      },
-      "path": "go/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "go"
-      },
-      "path": "go/plugin_api/unregister_post_processor_after_register.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "go"
-      },
-      "path": "go/plugin_api/unregister_reranker_backend.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "go"
-      },
-      "path": "go/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "go",
-      "target": "go",
-      "session": "go",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "go"
-      },
-      "path": "go/plugin_api/unregister_validator_after_register.md",
       "language": "go",
       "target": "go",
       "session": "go",
@@ -8573,18 +7685,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "java"
-      },
-      "path": "java/plugin_api/ocr_backends_unregister.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "java"
       },
@@ -8601,78 +7701,6 @@
         "language": "java"
       },
       "path": "java/plugin_api/post_processors_list.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "java"
-      },
-      "path": "java/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "java"
-      },
-      "path": "java/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "java"
-      },
-      "path": "java/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "java"
-      },
-      "path": "java/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "java"
-      },
-      "path": "java/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "java"
-      },
-      "path": "java/plugin_api/register_validator_trait_bridge.md",
       "language": "java",
       "target": "java",
       "session": "java",
@@ -8721,66 +7749,6 @@
         "language": "java"
       },
       "path": "java/plugin_api/tokenizer_backends_list.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "java"
-      },
-      "path": "java/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "java"
-      },
-      "path": "java/plugin_api/unregister_post_processor_after_register.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "java"
-      },
-      "path": "java/plugin_api/unregister_reranker_backend.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "java"
-      },
-      "path": "java/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "java",
-      "target": "java",
-      "session": "java",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "java"
-      },
-      "path": "java/plugin_api/unregister_validator_after_register.md",
       "language": "java",
       "target": "java",
       "session": "java",
@@ -9821,18 +8789,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/ocr_backends_unregister.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "kotlin_android"
       },
@@ -9849,78 +8805,6 @@
         "language": "kotlin_android"
       },
       "path": "kotlin-android/plugin_api/post_processors_list.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/register_validator_trait_bridge.md",
       "language": "kotlin",
       "target": "kotlin_android",
       "session": "kotlin_android",
@@ -9969,66 +8853,6 @@
         "language": "kotlin_android"
       },
       "path": "kotlin-android/plugin_api/tokenizer_backends_list.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/unregister_post_processor_after_register.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/unregister_reranker_backend.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "kotlin",
-      "target": "kotlin_android",
-      "session": "kotlin_android",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "kotlin_android"
-      },
-      "path": "kotlin-android/plugin_api/unregister_validator_after_register.md",
       "language": "kotlin",
       "target": "kotlin_android",
       "session": "kotlin_android",
@@ -11069,18 +9893,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "php"
-      },
-      "path": "php/plugin_api/ocr_backends_unregister.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "php"
       },
@@ -11097,78 +9909,6 @@
         "language": "php"
       },
       "path": "php/plugin_api/post_processors_list.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "php"
-      },
-      "path": "php/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "php"
-      },
-      "path": "php/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "php"
-      },
-      "path": "php/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "php"
-      },
-      "path": "php/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "php"
-      },
-      "path": "php/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "php"
-      },
-      "path": "php/plugin_api/register_validator_trait_bridge.md",
       "language": "php",
       "target": "php",
       "session": "php",
@@ -11217,66 +9957,6 @@
         "language": "php"
       },
       "path": "php/plugin_api/tokenizer_backends_list.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "php"
-      },
-      "path": "php/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "php"
-      },
-      "path": "php/plugin_api/unregister_post_processor_after_register.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "php"
-      },
-      "path": "php/plugin_api/unregister_reranker_backend.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "php"
-      },
-      "path": "php/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "php",
-      "target": "php",
-      "session": "php",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "php"
-      },
-      "path": "php/plugin_api/unregister_validator_after_register.md",
       "language": "php",
       "target": "php",
       "session": "php",
@@ -12317,18 +10997,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "python"
-      },
-      "path": "python/plugin_api/ocr_backends_unregister.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "python"
       },
@@ -12345,78 +11013,6 @@
         "language": "python"
       },
       "path": "python/plugin_api/post_processors_list.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "python"
-      },
-      "path": "python/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "python"
-      },
-      "path": "python/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "python"
-      },
-      "path": "python/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "python"
-      },
-      "path": "python/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "python"
-      },
-      "path": "python/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "python"
-      },
-      "path": "python/plugin_api/register_validator_trait_bridge.md",
       "language": "python",
       "target": "python",
       "session": "python",
@@ -12465,66 +11061,6 @@
         "language": "python"
       },
       "path": "python/plugin_api/tokenizer_backends_list.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "python"
-      },
-      "path": "python/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "python"
-      },
-      "path": "python/plugin_api/unregister_post_processor_after_register.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "python"
-      },
-      "path": "python/plugin_api/unregister_reranker_backend.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "python"
-      },
-      "path": "python/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "python",
-      "target": "python",
-      "session": "python",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "python"
-      },
-      "path": "python/plugin_api/unregister_validator_after_register.md",
       "language": "python",
       "target": "python",
       "session": "python",
@@ -13565,18 +12101,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/ocr_backends_unregister.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "ruby"
       },
@@ -13593,78 +12117,6 @@
         "language": "ruby"
       },
       "path": "ruby/plugin_api/post_processors_list.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/register_validator_trait_bridge.md",
       "language": "ruby",
       "target": "ruby",
       "session": "ruby",
@@ -13713,66 +12165,6 @@
         "language": "ruby"
       },
       "path": "ruby/plugin_api/tokenizer_backends_list.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/unregister_post_processor_after_register.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/unregister_reranker_backend.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "ruby",
-      "target": "ruby",
-      "session": "ruby",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "ruby"
-      },
-      "path": "ruby/plugin_api/unregister_validator_after_register.md",
       "language": "ruby",
       "target": "ruby",
       "session": "ruby",
@@ -16280,18 +14672,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/ocr_backends_unregister.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "swift"
       },
@@ -16308,78 +14688,6 @@
         "language": "swift"
       },
       "path": "swift/plugin_api/post_processors_list.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/register_validator_trait_bridge.md",
       "language": "swift",
       "target": "swift",
       "session": "swift",
@@ -16428,66 +14736,6 @@
         "language": "swift"
       },
       "path": "swift/plugin_api/tokenizer_backends_list.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/unregister_post_processor_after_register.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/unregister_reranker_backend.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "swift",
-      "target": "swift",
-      "session": "swift",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "swift"
-      },
-      "path": "swift/plugin_api/unregister_validator_after_register.md",
       "language": "swift",
       "target": "swift",
       "session": "swift",
@@ -17528,18 +15776,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/ocr_backends_unregister.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "node"
       },
@@ -17556,78 +15792,6 @@
         "language": "node"
       },
       "path": "typescript/plugin_api/post_processors_list.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/register_validator_trait_bridge.md",
       "language": "typescript",
       "target": "node",
       "session": "node",
@@ -17676,66 +15840,6 @@
         "language": "node"
       },
       "path": "typescript/plugin_api/tokenizer_backends_list.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/unregister_post_processor_after_register.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/unregister_reranker_backend.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "typescript",
-      "target": "node",
-      "session": "node",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "node"
-      },
-      "path": "typescript/plugin_api/unregister_validator_after_register.md",
       "language": "typescript",
       "target": "node",
       "session": "node",
@@ -18776,18 +16880,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/ocr_backends_unregister.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "wasm"
       },
@@ -18804,78 +16896,6 @@
         "language": "wasm"
       },
       "path": "wasm/plugin_api/post_processors_list.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/register_validator_trait_bridge.md",
       "language": "typescript",
       "target": "wasm",
       "session": "wasm",
@@ -18924,66 +16944,6 @@
         "language": "wasm"
       },
       "path": "wasm/plugin_api/tokenizer_backends_list.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/unregister_post_processor_after_register.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/unregister_reranker_backend.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "typescript",
-      "target": "wasm",
-      "session": "wasm",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "wasm"
-      },
-      "path": "wasm/plugin_api/unregister_validator_after_register.md",
       "language": "typescript",
       "target": "wasm",
       "session": "wasm",
@@ -20024,18 +17984,6 @@
     },
     {
       "key": {
-        "fixture_id": "ocr_backends_unregister",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/ocr_backends_unregister.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
         "fixture_id": "post_processors_clear",
         "language": "zig"
       },
@@ -20052,78 +18000,6 @@
         "language": "zig"
       },
       "path": "zig/plugin_api/post_processors_list.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_embedding_backend_trait_bridge",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/register_embedding_backend_trait_bridge.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_ocr_backend_trait_bridge",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/register_ocr_backend_trait_bridge.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_post_processor_trait_bridge",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/register_post_processor_trait_bridge.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_reranker_backend_trait_bridge",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/register_reranker_backend_trait_bridge.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_tokenizer_backend_trait_bridge",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/register_tokenizer_backend_trait_bridge.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "register_validator_trait_bridge",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/register_validator_trait_bridge.md",
       "language": "zig",
       "target": "zig",
       "session": "zig",
@@ -20172,66 +18048,6 @@
         "language": "zig"
       },
       "path": "zig/plugin_api/tokenizer_backends_list.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_embedding_backend_after_register",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/unregister_embedding_backend_after_register.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_post_processor_after_register",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/unregister_post_processor_after_register.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_reranker_backend",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/unregister_reranker_backend.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_tokenizer_backend_after_register",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/unregister_tokenizer_backend_after_register.md",
-      "language": "zig",
-      "target": "zig",
-      "session": "zig",
-      "requires": [],
-      "side_effect": "safe"
-    },
-    {
-      "key": {
-        "fixture_id": "unregister_validator_after_register",
-        "language": "zig"
-      },
-      "path": "zig/plugin_api/unregister_validator_after_register.md",
       "language": "zig",
       "target": "zig",
       "session": "zig",
@@ -24046,63 +21862,7 @@
     },
     {
       "fixture_id": "ocr_backends_unregister",
-      "language": "c"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "go"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "java"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "node"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "php"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "python"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "ruby"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
       "language": "rust"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "zig"
     },
     {
       "fixture_id": "ocr_basic_config",
@@ -24766,363 +22526,27 @@
     },
     {
       "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "ruby"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
       "language": "rust"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "ruby"
     },
     {
       "fixture_id": "register_ocr_backend_trait_bridge",
       "language": "rust"
     },
     {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "register_post_processor_trait_bridge",
       "language": "rust"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "ruby"
     },
     {
       "fixture_id": "register_reranker_backend_trait_bridge",
       "language": "rust"
     },
     {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "register_tokenizer_backend_trait_bridge",
       "language": "rust"
     },
     {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "register_validator_trait_bridge",
       "language": "rust"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "zig"
     },
     {
       "fixture_id": "renderers_clear",
@@ -25966,303 +23390,23 @@
     },
     {
       "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "ruby"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
       "language": "rust"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "ruby"
     },
     {
       "fixture_id": "unregister_post_processor_after_register",
       "language": "rust"
     },
     {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "unregister_reranker_backend",
       "language": "rust"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "ruby"
     },
     {
       "fixture_id": "unregister_tokenizer_backend_after_register",
       "language": "rust"
     },
     {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "unregister_validator_after_register",
       "language": "rust"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "zig"
     },
     {
       "fixture_id": "url_batch_mixed_inputs",
@@ -30288,63 +27432,7 @@
     },
     {
       "fixture_id": "ocr_backends_unregister",
-      "language": "c"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "go"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "java"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "node"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "php"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "python"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "ruby"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
       "language": "rust"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "ocr_backends_unregister",
-      "language": "zig"
     },
     {
       "fixture_id": "ocr_basic_config",
@@ -31008,363 +28096,27 @@
     },
     {
       "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "ruby"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
       "language": "rust"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_embedding_backend_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "ruby"
     },
     {
       "fixture_id": "register_ocr_backend_trait_bridge",
       "language": "rust"
     },
     {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_ocr_backend_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "register_post_processor_trait_bridge",
       "language": "rust"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_post_processor_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "ruby"
     },
     {
       "fixture_id": "register_reranker_backend_trait_bridge",
       "language": "rust"
     },
     {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_reranker_backend_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "register_tokenizer_backend_trait_bridge",
       "language": "rust"
     },
     {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_tokenizer_backend_trait_bridge",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "c"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "go"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "java"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "node"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "php"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "python"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "register_validator_trait_bridge",
       "language": "rust"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "register_validator_trait_bridge",
-      "language": "zig"
     },
     {
       "fixture_id": "renderers_clear",
@@ -32208,303 +28960,23 @@
     },
     {
       "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "ruby"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
       "language": "rust"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_embedding_backend_after_register",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "ruby"
     },
     {
       "fixture_id": "unregister_post_processor_after_register",
       "language": "rust"
     },
     {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_post_processor_after_register",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "unregister_reranker_backend",
       "language": "rust"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_reranker_backend",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "ruby"
     },
     {
       "fixture_id": "unregister_tokenizer_backend_after_register",
       "language": "rust"
     },
     {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_tokenizer_backend_after_register",
-      "language": "zig"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "c"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "csharp"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "dart"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "elixir"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "go"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "java"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "kotlin_android"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "node"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "php"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "python"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "ruby"
-    },
-    {
       "fixture_id": "unregister_validator_after_register",
       "language": "rust"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "swift"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "wasm"
-    },
-    {
-      "fixture_id": "unregister_validator_after_register",
-      "language": "zig"
     },
     {
       "fixture_id": "url_batch_mixed_inputs",

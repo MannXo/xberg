@@ -19,6 +19,7 @@
 #define XBERG_FEATURE_EMBEDDING_PRESETS 1
 #define XBERG_FEATURE_ENRICHMENT 1
 #define XBERG_FEATURE_EXCEL 1
+#define XBERG_FEATURE_FORMULA_RECOGNITION 1
 #define XBERG_FEATURE_HEURISTICS 1
 #define XBERG_FEATURE_HTML 1
 #define XBERG_FEATURE_HWP 1
@@ -34,6 +35,7 @@
 #define XBERG_FEATURE_LITER_LLM 1
 #define XBERG_FEATURE_MARKDOWN_FOOTNOTES 1
 #define XBERG_FEATURE_MCP 1
+#define XBERG_FEATURE_MCP_HTTP 1
 #define XBERG_FEATURE_MDX 1
 #define XBERG_FEATURE_NER_LLM 1
 #define XBERG_FEATURE_NER_ONNX 1
@@ -2575,6 +2577,15 @@ typedef struct XBERGTable XBERGTable;
  * Future extension point for rich table support with cell-level metadata.
  */
 typedef struct XBERGTableCell XBERGTableCell;
+/**
+ * The paragraph style a single table cell's text carries, located by grid
+ * position.
+ *
+ * Flat rather than a nested `Vec<Vec<Option<..>>>`: the nested shape marshals
+ * badly across the FFI bindings, and the data is sparse anyway. See
+ * `Table.cell_styles`.
+ */
+typedef struct XBERGTableCellStyle XBERGTableCellStyle;
 /**
  * Controls how markdown tables are handled when they exceed the chunk size
  * limit.
@@ -13419,6 +13430,35 @@ int32_t xberg_grid_cell_is_header(XBERGAlefHandle handle);
 XBERGAlefHandle xberg_grid_cell_bbox(XBERGAlefHandle handle);
 
 /**
+ * Get the `heading_level` field from a `GridCell`.
+ * # Safety
+ * Pointer must be a valid handle returned by this library.
+ */
+uint8_t xberg_grid_cell_heading_level(XBERGAlefHandle handle);
+
+/**
+ * Report whether the `heading_level` field on a `GridCell` is `Some`.
+ *
+ * `xberg_grid_cell_heading_level` cannot distinguish a `None` field from a
+ * legitimate zero-valued `Some` at the C ABI boundary -- there is no null
+ * representation for a numeric return, so both collapse to the same sentinel.
+ * Call this function first: `1` means the field getter's return value is
+ * meaningful, `0` means the field is absent and the getter's sentinel must be
+ * ignored, `-1` reports an invalid handle (see `xberg_last_error_code`). #
+ * Safety Pointer must be a valid handle returned by this library.
+ */
+int32_t xberg_grid_cell_has_heading_level(XBERGAlefHandle handle);
+
+/**
+ * Get the `style_name` field from a `GridCell`.
+ * A non-null returned pointer is owned by the caller.
+ * It must be freed with `xberg_free_string`.
+ * # Safety
+ * Pointer must be a valid handle returned by this library.
+ */
+char *xberg_grid_cell_style_name(XBERGAlefHandle handle);
+
+/**
  * Create a `HeaderMetadata` from a JSON string. Returns null on failure.
  * # Safety
  * JSON string must be valid UTF-8 and null-terminated.
@@ -23744,6 +23784,15 @@ XBERGAlefHandle xberg_table_bounding_box(XBERGAlefHandle handle);
 char *xberg_table_table_id(XBERGAlefHandle handle);
 
 /**
+ * Get the `cell_styles` field from a `Table`.
+ * A non-null returned pointer is owned by the caller.
+ * It must be freed with `xberg_free_string`.
+ * # Safety
+ * Pointer must be a valid handle returned by this library.
+ */
+char *xberg_table_cell_styles(XBERGAlefHandle handle);
+
+/**
  * Get the `columns` field from a `Table`.
  * A non-null returned pointer is owned by the caller.
  * It must be freed with `xberg_free_string`.
@@ -23804,6 +23853,72 @@ uint32_t xberg_table_cell_col_span(XBERGAlefHandle handle);
  * Pointer must be a valid handle returned by this library.
  */
 int32_t xberg_table_cell_is_header(XBERGAlefHandle handle);
+
+/**
+ * Create a `TableCellStyle` from a JSON string. Returns null on failure.
+ * # Safety
+ * JSON string must be valid UTF-8 and null-terminated.
+ * Returned handle must be freed with `xberg_table_cell_style_free`.
+ */
+XBERGAlefHandle xberg_table_cell_style_from_json(const char *json);
+
+/**
+ * Serialize a `TableCellStyle` to a JSON string. Returns null on failure.
+ * # Safety
+ * `handle` must be a valid, non-zero handle returned by a `xberg` function.
+ * The returned string must be freed with `xberg_free_string`.
+ */
+char *xberg_table_cell_style_to_json(XBERGAlefHandle handle);
+
+/**
+ * Free a `TableCellStyle` handle.
+ * # Safety
+ * Handle must have been returned by this library, or be zero.
+ */
+void xberg_table_cell_style_free(XBERGAlefHandle handle);
+
+/**
+ * Get the `row` field from a `TableCellStyle`.
+ * # Safety
+ * Pointer must be a valid handle returned by this library.
+ */
+uint32_t xberg_table_cell_style_row(XBERGAlefHandle handle);
+
+/**
+ * Get the `col` field from a `TableCellStyle`.
+ * # Safety
+ * Pointer must be a valid handle returned by this library.
+ */
+uint32_t xberg_table_cell_style_col(XBERGAlefHandle handle);
+
+/**
+ * Get the `heading_level` field from a `TableCellStyle`.
+ * # Safety
+ * Pointer must be a valid handle returned by this library.
+ */
+uint8_t xberg_table_cell_style_heading_level(XBERGAlefHandle handle);
+
+/**
+ * Report whether the `heading_level` field on a `TableCellStyle` is `Some`.
+ *
+ * `xberg_table_cell_style_heading_level` cannot distinguish a `None` field from
+ * a legitimate zero-valued `Some` at the C ABI boundary -- there is no null
+ * representation for a numeric return, so both collapse to the same sentinel.
+ * Call this function first: `1` means the field getter's return value is
+ * meaningful, `0` means the field is absent and the getter's sentinel must be
+ * ignored, `-1` reports an invalid handle (see `xberg_last_error_code`). #
+ * Safety Pointer must be a valid handle returned by this library.
+ */
+int32_t xberg_table_cell_style_has_heading_level(XBERGAlefHandle handle);
+
+/**
+ * Get the `style_name` field from a `TableCellStyle`.
+ * A non-null returned pointer is owned by the caller.
+ * It must be freed with `xberg_free_string`.
+ * # Safety
+ * Pointer must be a valid handle returned by this library.
+ */
+char *xberg_table_cell_style_style_name(XBERGAlefHandle handle);
 
 #if defined(XBERG_FEATURE_DIFF)
 /**

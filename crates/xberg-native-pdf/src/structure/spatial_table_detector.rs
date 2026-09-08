@@ -2946,10 +2946,24 @@ fn build_grid_from_lines(
     (result, v_edges, cells_are_intersections)
 }
 
-/// Tolerance for judging whether a V edge spans a row band's full height. Reuses `SNAP_TOL`
-/// (the tolerance every other coordinate comparison in this grid already uses) rather than a
-/// fresh value, so this check isn't stricter or looser than the grid it operates on.
-const BAND_RULE_SPAN_TOL: f32 = SNAP_TOL;
+/// Tolerance for judging whether a V edge spans a row band's full height.
+///
+/// This is a CONTAINMENT tolerance ("does this edge actually run through the band?"), which
+/// answers a different question than `SNAP_TOL`, an IDENTITY tolerance ("are these two
+/// coordinates the same coordinate?"). Reusing `SNAP_TOL` let an edge fall up to 3pt short of
+/// the band at *each* end and still count as spanning it, so a band up to 6pt shorter than the
+/// rule beside it was cut at a column position the drawn rule does not justify. The regression
+/// test below fails at 3.0 and passes at 1.0 on exactly that shape.
+///
+/// The phantom boundary is what lets a band of prose inside a drawn frame split into two or
+/// more cells instead of staying one wide cell, which is how such a region comes to satisfy the
+/// downstream minimums for being accepted as a table at all. GH#1588 reports page text going
+/// missing as a result; the precise downstream path is not asserted here, because the two
+/// analyses of it disagreed and this constant's own behaviour is provable without settling it.
+///
+/// Keep this constant independent of `SNAP_TOL` even if their values happen to coincide again
+/// in the future — they measure different things and must be free to diverge. ~keep
+const BAND_RULE_SPAN_TOL: f32 = 1.0;
 
 /// Group a row band's columns into contiguous runs that no V rule actually divides.
 ///
@@ -4719,6 +4733,34 @@ mod tests {
         assert!(
             unruled_texts[0].contains("gest"),
             "heading text should be reassembled as one run, got {unruled_texts:?}"
+        );
+    }
+
+    // xberg-io/xberg#1588: `BAND_RULE_SPAN_TOL` answers a CONTAINMENT question ("does this V
+    // edge actually run through the band?"), not the IDENTITY question `SNAP_TOL` answers
+    // ("are these two coordinates the same coordinate?"). Reusing `SNAP_TOL` (3.0) let an edge
+    // fall up to 3pt short of the band at each end and still count as a drawn boundary.
+    #[test]
+    fn should_not_count_a_rule_that_stops_short_of_the_band_as_a_boundary() {
+        let xs = [0.0, 40.0, 80.0];
+        let (y_lo, y_hi) = (0.0, 20.0);
+        let num_cols = 2;
+
+        // The divider at x=40.0 stops 2pt short of the band at each end: within the old
+        // `SNAP_TOL` (3.0) reuse, so it was wrongly counted as spanning; outside the fixed
+        // 1.0 containment tolerance, so it must no longer count.
+        let v_edges = [Edge {
+            coord: 40.0,
+            start: y_lo + 2.0,
+            end: y_hi - 2.0,
+        }];
+
+        let groups = band_column_groups(&xs, y_lo, y_hi, num_cols, &v_edges, true);
+
+        assert_eq!(
+            groups,
+            vec![(0, 1)],
+            "a rule that stops short of the band must not split it into separate column groups, got {groups:?}"
         );
     }
 

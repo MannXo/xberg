@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- PDF table detection no longer invents a column boundary from a rule that stops short of the row
+  band. `BAND_RULE_SPAN_TOL` was defined as `SNAP_TOL`, conflating two different questions:
+  `SNAP_TOL` decides whether two coordinates *are the same coordinate*, while this one decides
+  whether a vertical rule *runs through* a band. At 3pt an edge could fall short at each end and
+  still count as spanning, so a band up to 6pt shorter than the rule beside it was cut where the
+  drawn rule gave it no boundary. Those phantom columns are what let a band of prose inside a
+  drawn frame split into cells and qualify as a table, which on the reported document cost page
+  text. Now 1.0 and deliberately independent of `SNAP_TOL` (GH#1588).
+
 - Tesseract `psm = 0` is now rejected at configuration validation. PSM 0 is Tesseract's
   `PSM_OSD_ONLY` — orientation and script detection with no character recognition — so it cannot
   satisfy a text-extraction request, and Tesseract emits no hOCR for it at all. Setting it

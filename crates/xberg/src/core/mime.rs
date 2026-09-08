@@ -278,6 +278,10 @@ pub(crate) const POWER_POINT_MIME_TYPE: &str =
 pub(crate) const DOCX_MIME_TYPE: &str = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 pub(crate) const LEGACY_WORD_MIME_TYPE: &str = "application/msword";
 pub(crate) const LEGACY_POWERPOINT_MIME_TYPE: &str = "application/vnd.ms-powerpoint";
+/// Only reachable from `detect_ole2_package`, which is gated on the feature set that pulls in
+/// the `cfb` crate; without one of those features nothing names this constant and `-D warnings`
+/// rejects it as dead code. Gate must track that function's. ~keep
+#[cfg(any(feature = "office", feature = "hwp", feature = "email"))]
 pub(crate) const LEGACY_EXCEL_MIME_TYPE: &str = "application/vnd.ms-excel";
 
 pub(crate) const PST_MIME_TYPE: &str = "application/vnd.ms-outlook-pst";

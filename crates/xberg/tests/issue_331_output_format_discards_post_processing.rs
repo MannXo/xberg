@@ -75,6 +75,7 @@ async fn extract_with_redaction(output_format: OutputFormat) -> ExtractedDocumen
 
 /// The defect: Markdown output returned the pre-redaction text.
 #[tokio::test]
+#[serial_test::serial]
 async fn markdown_output_carries_post_processed_content() {
     let result = extract_with_redaction(OutputFormat::Markdown).await;
 
@@ -92,6 +93,7 @@ async fn markdown_output_carries_post_processed_content() {
 
 /// Djot renders through the same `formatted_content` path.
 #[tokio::test]
+#[serial_test::serial]
 async fn djot_output_carries_post_processed_content() {
     let result = extract_with_redaction(OutputFormat::Djot).await;
 
@@ -105,6 +107,7 @@ async fn djot_output_carries_post_processed_content() {
 /// The control: `Plain` never produced a `formatted_content`, so it was always correct and
 /// must stay correct.
 #[tokio::test]
+#[serial_test::serial]
 async fn plain_output_carries_post_processed_content() {
     let result = extract_with_redaction(OutputFormat::Plain).await;
 
@@ -148,6 +151,7 @@ mod maintains_both_surfaces {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn a_rendering_the_processor_kept_current_survives() {
         register_post_processor(std::sync::Arc::new(DualSurfaceProcessor))
             .expect("registering the processor should succeed");

@@ -1158,7 +1158,7 @@ jobs:
             # prebuilt). `heic` is already excluded from xberg-rb's default via alef.toml's
             # `excluded_default_features`. Adding a new xberg-rb feature later means adding it
             # here too whenever `windows-gnu-target` (or its core feature) also carries it. ~keep
-            ruby_cargo_args: --no-default-features --features api,api-types,auto-rotate-types,chunking-tokenizers,classification,diff,embedding-presets,heuristics,html,keywords-rake,keywords-yake,late-interaction-presets,layout-types,markdown-footnotes,ocr,office,paddle-ocr-types,pdf,presets,quality,redaction,reranker-presets,sparse-embedding-presets,svg,transcription-types,tree-sitter,url-config-types,url-ingestion,xml
+            ruby_cargo_args: --no-default-features --features api,api-types,auto-rotate-types,captioning,chunking,chunking-tokenizers,classification,diff,embedding-presets,heuristics,html,keywords-rake,keywords-yake,late-interaction-presets,layout-types,liter-llm,markdown-footnotes,mcp,ocr,office,paddle-ocr-types,pdf,presets,quality,redaction,redaction-rehydrate,reranker-presets,sparse-embedding-presets,svg,tokio-runtime,transcription-types,tree-sitter,url-config-types,url-ingestion,xml
     steps:
       - uses: actions/checkout@v7
         with:

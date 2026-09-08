@@ -15,6 +15,18 @@ use std::borrow::Cow;
 
 use super::types::PdfParagraph;
 
+/// Lowercased standalone alphabetic words the document itself writes elsewhere,
+/// used by [`repair_ligature_spaces`] to tell a genuine word boundary apart from
+/// a decomposed-ligature gap that looks identical at the string layer (#1591).
+/// Collected once per document by `pipeline::collect_word_witnesses` and
+/// threaded alongside the document's hyphen witnesses. ~keep
+pub(super) type WordWitnesses = ahash::AHashSet<String>;
+
+/// Minimum letters a fragment must have before it can count as evidence of a
+/// standalone word. A single decomposed-ligature fragment (the bare `f` in
+/// `f irst`) is common and must never witness itself. ~keep
+pub(super) const MIN_LIGATURE_WITNESS_WORD_LEN: usize = 2;
+
 /// Repair ligature corruption using contextual heuristics.
 ///
 /// Some PDF fonts have broken ToUnicode CMaps that map ligature glyphs to
@@ -492,10 +504,22 @@ pub(super) fn expand_ligatures_with_space_absorption(text: &str) -> Cow<'_, str>
 /// as word boundaries. This produces patterns like "eff iciently", "signif icant",
 /// "f irst" where the space appears at the ligature position.
 ///
-/// This function detects and removes these spurious spaces by looking for the pattern:
-/// `f` (or `ff`) followed by space followed by lowercase letter that would form a
-/// common ligature combination (fi, fl, ff).
-pub(super) fn repair_ligature_spaces(text: &str) -> Cow<'_, str> {
+/// This function detects the pattern `f` followed by space followed by a lowercase
+/// letter that would form a common ligature combination (fi, fl, ff), and removes the
+/// space UNLESS one of the two fragments the space separates is independently attested
+/// elsewhere in the document as a standalone word (see `pipeline::collect_word_witnesses`).
+/// The same character pattern is also an ordinary word boundary whenever a word happens
+/// to end in `f` and the next happens to begin with `i`, `l` or `f` ("relief for",
+/// "bedrijf is"); at the string layer, the two cases are indistinguishable by geometry
+/// or typography, only by whether the document itself uses the word elsewhere (#1591).
+///
+/// False positives: a document that uses a real word ending in `f` exactly once, right
+/// before an `i`/`l`/`f`-initial word, with no other occurrence anywhere in the document,
+/// still welds. False negatives: a genuine decomposed-ligature fragment that happens to
+/// coincide with an attested word (e.g. a document containing both `office` and, coincidentally,
+/// a decomposed `of ficial`) is left split. Both failure modes require a coincidence the
+/// 33-word static list this replaces could never have caught either.
+pub(super) fn repair_ligature_spaces<'a>(text: &'a str, word_witnesses: &WordWitnesses) -> Cow<'a, str> {
     if !text.contains("f ") {
         return Cow::Borrowed(text);
     }
@@ -506,16 +530,20 @@ pub(super) fn repair_ligature_spaces(text: &str) -> Cow<'_, str> {
 
     while let Some((index, ch)) = chars.next() {
         if ch == 'f' && chars.peek().is_some_and(|(_, next)| *next == ' ') {
-            let mut lookahead = chars.clone();
-            lookahead.next();
-            let continuation = lookahead.next().map(|(_, next)| next);
-            let current_word = &text[word_start..index + ch.len_utf8()];
-            let is_ligature_continuation = matches!(continuation, Some('i' | 'l' | 'f'));
+            let space_end = index + ch.len_utf8() + ' '.len_utf8();
+            let right_word = alphabetic_run_at(text, space_end);
+            let is_ligature_continuation = right_word.chars().next().is_some_and(|c| matches!(c, 'i' | 'l' | 'f'));
 
-            if is_ligature_continuation && !is_common_short_word(current_word) {
-                result.push(ch);
-                chars.next();
-                continue;
+            if is_ligature_continuation {
+                let left_word = &text[word_start..index + ch.len_utf8()];
+                let welds_a_witnessed_word =
+                    is_witnessed_word(left_word, word_witnesses) || is_witnessed_word(right_word, word_witnesses);
+
+                if !welds_a_witnessed_word {
+                    result.push(ch);
+                    chars.next();
+                    continue;
+                }
             }
         }
 
@@ -530,6 +558,20 @@ pub(super) fn repair_ligature_spaces(text: &str) -> Cow<'_, str> {
     } else {
         Cow::Owned(result)
     }
+}
+
+/// Whether `word` is long enough to count as evidence, and is attested in the
+/// document's word-witness set (case-insensitive).
+fn is_witnessed_word(word: &str, word_witnesses: &WordWitnesses) -> bool {
+    word.chars().count() >= MIN_LIGATURE_WITNESS_WORD_LEN && word_witnesses.contains(&word.to_ascii_lowercase())
+}
+
+/// The maximal run of alphabetic characters in `text` starting at byte offset `start`.
+/// Empty if `start` is at or past the end of `text`, or is not itself alphabetic.
+fn alphabetic_run_at(text: &str, start: usize) -> &str {
+    let tail = &text[start.min(text.len())..];
+    let end = tail.find(|c: char| !c.is_alphabetic()).unwrap_or(tail.len());
+    &tail[..end]
 }
 
 /// Normalize Unicode characters commonly found in PDFs to their ASCII equivalents.
@@ -1024,9 +1066,10 @@ mod tests {
     }
 
     #[test]
-    fn test_repair_ligature_spaces_preserves_short_word_boundary() {
+    fn test_repair_ligature_spaces_preserves_witnessed_word_boundary() {
         let text = "café kinetics of inhibitor adsorption if flow changes";
-        let repaired = repair_ligature_spaces(text);
+        let witnesses: WordWitnesses = ["of", "if"].into_iter().map(str::to_string).collect();
+        let repaired = repair_ligature_spaces(text, &witnesses);
 
         assert_eq!(repaired, text);
         assert!(matches!(repaired, Cow::Borrowed(_)));
@@ -1034,10 +1077,74 @@ mod tests {
 
     #[test]
     fn test_repair_ligature_spaces_repairs_intra_word_breaks() {
+        let witnesses = WordWitnesses::default();
         assert_eq!(
-            repair_ligature_spaces("f irst eff iciently signif icant"),
-            "first efficiently significant"
+            repair_ligature_spaces("f irst eff iciently signif icant f lange", &witnesses),
+            "first efficiently significant flange"
         );
+    }
+
+    /// GH#1591: `is_common_short_word` used to be the only guard against welding a real
+    /// word boundary, and it only ever checked the LEFT fragment against a hard-coded
+    /// 33-word English list. Without any witness for either fragment, a word boundary
+    /// that happens to end in `f` before an `i`/`l`/`f`-initial word is indistinguishable
+    /// at the string layer from a decomposed ligature, and welds -- this is the fix's
+    /// known false positive, documented rather than silently accepted.
+    #[test]
+    fn test_repair_ligature_spaces_welds_an_unwitnessed_word_boundary() {
+        let witnesses = WordWitnesses::default();
+        assert_eq!(
+            repair_ligature_spaces("relief for the victims", &witnesses),
+            "relieffor the victims"
+        );
+    }
+
+    /// GH#1591: the fix. When either fragment is independently attested elsewhere in
+    /// the document (here supplied directly, as `pipeline::collect_word_witnesses`
+    /// would gather it from another page or line), the space is recognised as a real
+    /// word boundary and preserved. English examples from the issue's reproducer.
+    #[test]
+    fn test_repair_ligature_spaces_preserves_english_word_boundaries_with_witnesses() {
+        let witnesses: WordWitnesses = ["relief", "itself"].into_iter().map(str::to_string).collect();
+
+        assert_eq!(
+            repair_ligature_spaces("relief for the victims", &witnesses),
+            "relief for the victims"
+        );
+        assert_eq!(
+            repair_ligature_spaces("itself infringes the patent", &witnesses),
+            "itself infringes the patent"
+        );
+    }
+
+    /// GH#1591: the issue's Dutch reproducer example -- `bedrijf is` and `bedrijf komen`
+    /// have identical gap geometry, glyph height and font; only whether "bedrijf" is
+    /// independently attested elsewhere in the document tells them apart from a
+    /// decomposed ligature.
+    #[test]
+    fn test_repair_ligature_spaces_preserves_dutch_word_boundary_with_witness() {
+        let witnesses: WordWitnesses = ["bedrijf"].into_iter().map(str::to_string).collect();
+        assert_eq!(
+            repair_ligature_spaces("bedrijf is gesloten", &witnesses),
+            "bedrijf is gesloten"
+        );
+    }
+
+    /// GH#1591: a witness on the RIGHT fragment is equally sufficient -- the guard does
+    /// not require evidence for the left fragment specifically.
+    #[test]
+    fn test_repair_ligature_spaces_preserves_word_boundary_via_right_witness() {
+        let witnesses: WordWitnesses = ["instructions"].into_iter().map(str::to_string).collect();
+        assert_eq!(repair_ligature_spaces("of instructions", &witnesses), "of instructions");
+    }
+
+    /// GH#1591: a witness shorter than `MIN_LIGATURE_WITNESS_WORD_LEN` cannot itself
+    /// count as evidence -- a bare `f` fragment must never witness itself, mirroring
+    /// the hyphen-witness collector's own single-letter guard.
+    #[test]
+    fn test_repair_ligature_spaces_single_letter_witness_is_ignored() {
+        let witnesses: WordWitnesses = ["f"].into_iter().map(str::to_string).collect();
+        assert_eq!(repair_ligature_spaces("f irst", &witnesses), "first");
     }
 
     #[test]

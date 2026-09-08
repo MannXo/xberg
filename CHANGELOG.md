@@ -25,6 +25,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- PDF text repair no longer welds two complete words into one. `repair_ligature_spaces` removes the
+  space in `…f` + ` ` + `i|l|f…` to undo a real artefact — some PDFs decompose a ligature glyph and
+  leave a spurious gap, so `first` arrives as `f irst` — but the same character pattern is an
+  ordinary word boundary whenever a word ends in `f` and the next begins with `i`, `l` or `f`. The
+  only guard was a hard-coded list of 33 short English words tested against the left token, so
+  everything outside it welded, English included: `relief for` became `relieffor` and `itself
+  infringes` became `itselfinfringes`. The space is now kept when either fragment is independently
+  attested as a standalone word elsewhere in the same document, reusing the witness mechanism
+  dehyphenation already applies. A fragment appearing only as one half of a candidate pair does not
+  witness itself (GH#1591).
+- DOCX page counting no longer collapses a table onto one page. Word writes
+  `<w:lastRenderedPageBreak/>` into *every* cell of a row that straddles a page boundary — one
+  physical break, one marker per cell — and the duplicated markers were reduced to a single break,
+  losing the originals with the duplicates. A seven-page document reported two. Breaks are now
+  identified by table depth, row and cell, so a marker echoed across the cells of one row counts
+  once while several breaks inside a single deep cell each still count (GH#1592).
+
 - PDF outline (bookmark) named destinations now resolve when the `/Names` -> `/Dests` name-tree
   key is UTF-16BE-with-BOM, the form Adobe Distiller writes. The lookup previously decoded the
   `/Dest` byte string with a lossy UTF-8 conversion before searching the tree; a name-tree key is a

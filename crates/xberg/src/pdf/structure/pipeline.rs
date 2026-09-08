@@ -23,8 +23,8 @@ use super::constants::{FULL_LINE_FRACTION, MIN_BLOCKS_FOR_FONT_HEADING, MIN_HEAD
 use super::lines::{is_cjk_char, segments_need_space};
 use super::paragraphs::{merge_continuation_paragraphs, split_embedded_list_items};
 use super::text_repair::{
-    apply_to_all_segments, clean_duplicate_punctuation, collapse_spaced_hyphens,
-    expand_ligatures_with_space_absorption, normalize_text_encoding, normalize_unicode_text,
+    MIN_LIGATURE_WITNESS_WORD_LEN, WordWitnesses, apply_to_all_segments, clean_duplicate_punctuation,
+    collapse_spaced_hyphens, expand_ligatures_with_space_absorption, normalize_text_encoding, normalize_unicode_text,
     repair_contextual_ligatures, repair_ligature_spaces,
 };
 use super::types::{LayoutHint, PdfParagraph};
@@ -64,6 +64,15 @@ type HeadingMap = Vec<(f32, Option<u8>)>;
 /// hyphenated token elsewhere in the text, gathered once per document (#1543).
 /// Threaded alongside [`HeadingMap`] as a document-scoped shared reference. ~keep
 type HyphenWitnesses = ahash::AHashSet<(String, String)>;
+
+/// Document-scoped text-repair evidence, collected once per document by
+/// [`collect_hyphen_witnesses`] and [`collect_word_witnesses`] and threaded through
+/// paragraph assembly as a single shared reference, alongside [`HeadingMap`]. ~keep
+#[derive(Default)]
+struct TextRepairWitnesses {
+    hyphens: HyphenWitnesses,
+    words: WordWitnesses,
+}
 
 fn sparse_multi_page_heading_map(
     all_page_segments: &[Vec<SegmentData>],
@@ -704,7 +713,7 @@ fn process_single_page(
     input: PageInput,
     heading_map: &[(f32, Option<u8>)],
     doc_body_font_size: Option<f32>,
-    hyphen_witnesses: &HyphenWitnesses,
+    witnesses: &TextRepairWitnesses,
 ) -> Vec<PdfParagraph> {
     let PageInput {
         page_index: i,
@@ -729,7 +738,7 @@ fn process_single_page(
     #[cfg(not(feature = "layout-detection"))]
     let _ = use_layout_reading_order;
     if let Some(mut paragraphs) = struct_paragraphs {
-        apply_text_repair_to_structure_tree_paragraphs(&mut paragraphs, true, hyphen_witnesses);
+        apply_text_repair_to_structure_tree_paragraphs(&mut paragraphs, true, witnesses);
         if needs_classify {
             tracing::debug!(
                 page = i,
@@ -789,21 +798,20 @@ fn process_single_page(
                         include_footnotes,
                         page_width_pts,
                         apply_layout_overrides: !preserve_native_semantics,
-                        hyphen_witnesses,
+                        witnesses,
                     },
                 )
             } else {
-                let mut paragraphs =
-                    segments_to_paragraphs(page_segments, heading_map, &paragraph_gap_ys, hyphen_witnesses);
+                let mut paragraphs = segments_to_paragraphs(page_segments, heading_map, &paragraph_gap_ys, witnesses);
                 let classification_hints = regular_layout_hints(hints);
                 super::layout_classify::annotate_layout_classes(&mut paragraphs, &classification_hints, 0.5, 0.2);
                 paragraphs
             }
         } else {
-            segments_to_paragraphs(page_segments, heading_map, &paragraph_gap_ys, hyphen_witnesses)
+            segments_to_paragraphs(page_segments, heading_map, &paragraph_gap_ys, witnesses)
         };
         #[cfg(not(feature = "layout-detection"))]
-        let mut paragraphs = segments_to_paragraphs(page_segments, heading_map, &paragraph_gap_ys, hyphen_witnesses);
+        let mut paragraphs = segments_to_paragraphs(page_segments, heading_map, &paragraph_gap_ys, witnesses);
         tracing::debug!(
             page = i,
             paragraphs = paragraphs.len(),
@@ -1001,11 +1009,11 @@ fn segments_to_paragraphs(
     segments: Vec<SegmentData>,
     heading_map: &[(f32, Option<u8>)],
     paragraph_gap_ys: &[f32],
-    hyphen_witnesses: &HyphenWitnesses,
+    witnesses: &TextRepairWitnesses,
 ) -> Vec<PdfParagraph> {
     let segments = order_segments_in_reading_frames(segments);
     let mut paragraphs = blocks_to_paragraphs(segments, heading_map, paragraph_gap_ys);
-    apply_text_repair_to_structure_tree_paragraphs(&mut paragraphs, true, hyphen_witnesses);
+    apply_text_repair_to_structure_tree_paragraphs(&mut paragraphs, true, witnesses);
     reattach_detached_list_markers(&mut paragraphs, DetachedMarkerFrame::Native);
     merge_continuation_paragraphs(&mut paragraphs);
     synchronize_paragraph_text_metadata(&mut paragraphs);
@@ -1492,7 +1500,7 @@ struct LayoutParagraphContext<'a> {
     include_footnotes: bool,
     page_width_pts: Option<f32>,
     apply_layout_overrides: bool,
-    hyphen_witnesses: &'a HyphenWitnesses,
+    witnesses: &'a TextRepairWitnesses,
 }
 
 #[cfg(feature = "layout-detection")]
@@ -1522,7 +1530,7 @@ fn process_layout_segment_groups(
             segments,
             context.heading_map,
             context.paragraph_gap_ys,
-            context.hyphen_witnesses,
+            context.witnesses,
         );
     }
     if !context.apply_layout_overrides {
@@ -1531,7 +1539,7 @@ fn process_layout_segment_groups(
             segments,
             context.heading_map,
             context.paragraph_gap_ys,
-            context.hyphen_witnesses,
+            context.witnesses,
         );
         assign_native_paragraph_layout(&mut paragraphs, &groups, &group_bounds);
         let classification_hints = regular_layout_hints(hints);
@@ -1553,7 +1561,7 @@ fn process_layout_segment_groups(
         }
         let gap_ys = compute_paragraph_gap_ys(&group_segments);
         let mut group_paragraphs =
-            segments_to_paragraphs(group_segments, context.heading_map, &gap_ys, context.hyphen_witnesses);
+            segments_to_paragraphs(group_segments, context.heading_map, &gap_ys, context.witnesses);
         let group_hints = group
             .hint_indices
             .into_iter()
@@ -1593,7 +1601,7 @@ fn process_layout_segment_groups(
             leftovers,
             context.heading_map,
             &gap_ys,
-            context.hyphen_witnesses,
+            context.witnesses,
         ));
     }
     paragraphs
@@ -3134,7 +3142,10 @@ pub(crate) fn extract_document_structure_from_segments(
             })
         })
         .collect();
-    let hyphen_witnesses = collect_hyphen_witnesses(&all_page_segments);
+    let witnesses = TextRepairWitnesses {
+        hyphens: collect_hyphen_witnesses(&all_page_segments),
+        words: collect_word_witnesses(&all_page_segments),
+    };
     let page_inputs: Vec<PageInput> = (0..page_count)
         .map(|i| {
             let heuristic_segments = std::mem::take(&mut all_page_segments[i]);
@@ -3173,12 +3184,12 @@ pub(crate) fn extract_document_structure_from_segments(
     #[cfg(not(target_arch = "wasm32"))]
     let mut all_page_paragraphs: Vec<Vec<PdfParagraph>> = page_inputs
         .into_par_iter()
-        .map(|input| process_single_page(input, &heading_map, doc_body_font_size, &hyphen_witnesses))
+        .map(|input| process_single_page(input, &heading_map, doc_body_font_size, &witnesses))
         .collect();
     #[cfg(target_arch = "wasm32")]
     let mut all_page_paragraphs: Vec<Vec<PdfParagraph>> = page_inputs
         .into_iter()
-        .map(|input| process_single_page(input, &heading_map, doc_body_font_size, &hyphen_witnesses))
+        .map(|input| process_single_page(input, &heading_map, doc_body_font_size, &witnesses))
         .collect();
 
     refine_heading_hierarchy(&mut all_page_paragraphs);
@@ -3951,9 +3962,9 @@ fn filter_segments_by_table_bboxes(
 /// Apply all 5 text repair passes in a single traversal over a segment's text.
 ///
 /// Returns `Cow::Borrowed` if nothing changed, `Cow::Owned` otherwise.
-fn fused_text_repairs(text: &str) -> Cow<'_, str> {
+fn fused_text_repairs<'a>(text: &'a str, word_witnesses: &WordWitnesses) -> Cow<'a, str> {
     let t1 = normalize_text_encoding(text);
-    let t2 = repair_ligature_spaces(&t1);
+    let t2 = repair_ligature_spaces(&t1, word_witnesses);
     let t3 = expand_ligatures_with_space_absorption(&t2);
     let t3b = collapse_spaced_hyphens(&t3);
     let t4 = normalize_unicode_text(&t3b);
@@ -5038,6 +5049,50 @@ fn collect_hyphen_witnesses(all_page_segments: &[Vec<SegmentData>]) -> HyphenWit
     witnesses
 }
 
+/// Collect standalone alphabetic words the document itself writes elsewhere, so
+/// [`repair_ligature_spaces`] can tell a genuine word boundary apart from a
+/// decomposed-ligature gap that looks identical at the string layer (#1591).
+///
+/// A token that is itself one half of a ligature-space candidate pattern (ends in
+/// `f` right before whitespace, or starts with `i`/`l`/`f` right after it) is not
+/// independent evidence for that occurrence: the very space under judgment put it
+/// there, so counting it would make every candidate witness itself and disable the
+/// repair (see the `f irst` false-negative this guards against). The same word
+/// witnessed elsewhere in the document, in a position that is not itself a
+/// candidate, is unaffected and still counts. Must run before any page's segments
+/// are moved out of `all_page_segments` (see call site in
+/// `extract_document_structure_from_segments`), mirroring
+/// [`collect_hyphen_witnesses`]. ~keep
+fn collect_word_witnesses(all_page_segments: &[Vec<SegmentData>]) -> WordWitnesses {
+    let mut witnesses = WordWitnesses::default();
+    for segment in all_page_segments.iter().flatten() {
+        let cores: Vec<&str> = segment
+            .text
+            .split_whitespace()
+            .map(|token| token.trim_matches(|c: char| !c.is_alphabetic()))
+            .collect();
+        for index in 0..cores.len() {
+            let core = cores[index];
+            if core.chars().count() < MIN_LIGATURE_WITNESS_WORD_LEN {
+                continue;
+            }
+            let is_left_of_candidate = core.ends_with('f')
+                && cores
+                    .get(index + 1)
+                    .and_then(|next| next.chars().next())
+                    .is_some_and(|c| matches!(c, 'i' | 'l' | 'f'));
+            let is_right_of_candidate = index > 0
+                && cores[index - 1].ends_with('f')
+                && core.chars().next().is_some_and(|c| matches!(c, 'i' | 'l' | 'f'));
+            if is_left_of_candidate || is_right_of_candidate {
+                continue;
+            }
+            witnesses.insert(core.to_ascii_lowercase());
+        }
+    }
+    witnesses
+}
+
 fn should_preserve_lexical_hyphen(trailing_word: &str, leading_word: &str, hyphen_witnesses: &HyphenWitnesses) -> bool {
     let trim_non_lexical = |ch: char| !ch.is_alphanumeric() && ch != '-';
     let left = trailing_word.trim_matches(trim_non_lexical);
@@ -5618,10 +5673,10 @@ fn run_in_list_fragment(source: &PdfParagraph, text: String, is_list_item: bool)
 fn apply_text_repair_to_structure_tree_paragraphs(
     paragraphs: &mut Vec<PdfParagraph>,
     has_positions: bool,
-    hyphen_witnesses: &HyphenWitnesses,
+    witnesses: &TextRepairWitnesses,
 ) {
-    apply_to_all_segments(paragraphs, fused_text_repairs);
-    dehyphenate_paragraphs(paragraphs, has_positions, hyphen_witnesses);
+    apply_to_all_segments(paragraphs, |text| fused_text_repairs(text, &witnesses.words));
+    dehyphenate_paragraphs(paragraphs, has_positions, &witnesses.hyphens);
     split_embedded_list_items(paragraphs);
     synchronize_paragraph_text_metadata(paragraphs);
 }
@@ -7120,7 +7175,7 @@ mod tests {
             body_line_seg("1.6 Ventilatie", 658.0),
         ];
 
-        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &[], &HyphenWitnesses::default());
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &[], &TextRepairWitnesses::default());
 
         assert_eq!(
             paragraphs.len(),
@@ -7140,7 +7195,7 @@ mod tests {
             body_line_seg("2024 was een druk jaar", 686.0),
         ];
 
-        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &[], &HyphenWitnesses::default());
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &[], &TextRepairWitnesses::default());
 
         assert_eq!(
             paragraphs.len(),
@@ -7205,7 +7260,7 @@ mod tests {
             vec![heading, callout, body1, body2, body3],
             &[(12.0, None)],
             &[],
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
 
         assert_eq!(
@@ -7249,7 +7304,7 @@ mod tests {
             vec![heading_start, heading_continuation],
             &[(11.0, None)],
             &[],
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
 
         assert_eq!(
@@ -7271,7 +7326,7 @@ mod tests {
             body_line_seg("before adjourning the meeting for the day", 672.0),
         ];
 
-        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &[], &HyphenWitnesses::default());
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &[], &TextRepairWitnesses::default());
 
         assert_eq!(
             paragraphs.len(),
@@ -7329,7 +7384,7 @@ mod tests {
         ];
         let gap_ys = compute_paragraph_gap_ys(&segments);
 
-        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &gap_ys, &HyphenWitnesses::default());
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &gap_ys, &TextRepairWitnesses::default());
 
         assert_eq!(
             paragraphs.len(),
@@ -7374,7 +7429,7 @@ mod tests {
         ];
         let gap_ys = compute_paragraph_gap_ys(&segments);
 
-        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &gap_ys, &HyphenWitnesses::default());
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &gap_ys, &TextRepairWitnesses::default());
 
         assert_eq!(
             paragraphs.iter().filter(|paragraph| paragraph.is_list_item).count(),
@@ -7429,7 +7484,7 @@ mod tests {
         ];
         let gap_ys = compute_paragraph_gap_ys(&segments);
 
-        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &gap_ys, &HyphenWitnesses::default());
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &gap_ys, &TextRepairWitnesses::default());
 
         assert_eq!(
             paragraphs.len(),
@@ -7576,7 +7631,7 @@ mod tests {
         ];
         let gap_ys = compute_paragraph_gap_ys(&segments);
 
-        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &gap_ys, &HyphenWitnesses::default());
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &gap_ys, &TextRepairWitnesses::default());
 
         assert_eq!(paragraphs.len(), 2, "baseline agreement is what licenses reattachment");
         assert!(
@@ -8399,7 +8454,7 @@ where new shares are issued;";
             },
             &[],
             None,
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         )
     }
 
@@ -8431,7 +8486,7 @@ where new shares are issued;";
                 },
                 &[],
                 None,
-                &HyphenWitnesses::default(),
+                &TextRepairWitnesses::default(),
             )
         };
 
@@ -8512,7 +8567,7 @@ where new shares are issued;";
                 },
                 &[],
                 None,
-                &HyphenWitnesses::default(),
+                &TextRepairWitnesses::default(),
             )];
             reorder_pages_by_layout_region(&mut pages);
             pages[0].iter().map(paragraph_text).collect::<Vec<_>>()
@@ -8587,7 +8642,7 @@ where new shares are issued;";
             },
             &[],
             None,
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
 
         assert_eq!(output.len(), 1);
@@ -8625,7 +8680,7 @@ where new shares are issued;";
             },
             &[],
             None,
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
 
         assert_eq!(output.len(), 1);
@@ -8664,7 +8719,7 @@ where new shares are issued;";
             },
             &[],
             None,
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
 
         assert_eq!(output.len(), 1);
@@ -8756,7 +8811,7 @@ where new shares are issued;";
             },
             &[],
             None,
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
 
         assert_eq!(output.len(), 3);
@@ -8804,7 +8859,7 @@ where new shares are issued;";
             },
             &[],
             Some(12.0),
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
 
         assert_eq!(output.len(), 2);
@@ -9104,6 +9159,104 @@ where new shares are issued;";
             witnesses.contains(&("café".to_string(), "terrasse".to_string())),
             "a non-ASCII word must still be witnessed: got {witnesses:?}"
         );
+    }
+
+    /// GH#1591: a word attested standalone elsewhere in the document is collected as
+    /// a witness, even though its OTHER occurrence sits directly in front of a
+    /// ligature-space candidate pattern ("bedrijf is") that must not weld it.
+    #[test]
+    fn collect_word_witnesses_finds_a_standalone_occurrence_elsewhere() {
+        let pages = vec![vec![
+            seg("bedrijf is gesloten", 0.0, 0.0),
+            seg("het bedrijf verkocht apparatuur", 0.0, 0.0),
+        ]];
+
+        let witnesses = collect_word_witnesses(&pages);
+
+        assert!(
+            witnesses.contains("bedrijf"),
+            "bedrijf must be witnessed by its ordinary-prose occurrence: got {witnesses:?}"
+        );
+    }
+
+    /// The load-bearing negative for #1591: a fragment that appears ONLY as one half
+    /// of a ligature-space candidate pattern must never witness itself, or every
+    /// genuine decomposed ligature (e.g. `f irst`) would become unrepairable the
+    /// moment its own halves are long enough to pass the length guard.
+    ///
+    /// Neutralisation that must break this test: collect witnesses via a naive
+    /// `split_whitespace()` over every segment with no candidate-pattern exclusion.
+    #[test]
+    fn collect_word_witnesses_does_not_witness_its_own_candidate_halves() {
+        let pages = vec![vec![seg("f irst eff iciently", 0.0, 0.0)]];
+
+        let witnesses = collect_word_witnesses(&pages);
+
+        assert!(
+            !witnesses.contains("irst") && !witnesses.contains("eff") && !witnesses.contains("iciently"),
+            "a candidate pattern's own fragments must not self-witness: got {witnesses:?}"
+        );
+    }
+
+    /// A word used twice, once as a candidate's left half and once in an ordinary
+    /// position, is still witnessed via its non-candidate occurrence -- the exclusion
+    /// applies per-occurrence, not to the word everywhere it appears in the document.
+    #[test]
+    fn collect_word_witnesses_witnesses_a_word_used_twice_once_as_a_candidate() {
+        let pages = vec![vec![seg("relief for relief workers arrived", 0.0, 0.0)]];
+
+        let witnesses = collect_word_witnesses(&pages);
+
+        assert!(
+            witnesses.contains("relief"),
+            "the second, non-candidate occurrence of relief must still witness it: got {witnesses:?}"
+        );
+    }
+
+    /// Length guard mirroring `MIN_HYPHEN_WITNESS_WORD_LEN`: a single-letter fragment
+    /// must never count as its own witness.
+    #[test]
+    fn collect_word_witnesses_ignores_single_letter_fragments() {
+        let pages = vec![vec![seg("a b c", 0.0, 0.0)]];
+
+        let witnesses = collect_word_witnesses(&pages);
+
+        assert!(
+            witnesses.is_empty(),
+            "single-letter tokens must never be witnesses: got {witnesses:?}"
+        );
+    }
+
+    /// End-to-end (#1591): `apply_text_repair_to_structure_tree_paragraphs` must
+    /// forward the document's word witnesses into `repair_ligature_spaces`, not just
+    /// its hyphen witnesses.
+    ///
+    /// Neutralisation that must break this test: pass `WordWitnesses::default()` to
+    /// `fused_text_repairs` instead of `witnesses.words` in
+    /// `apply_text_repair_to_structure_tree_paragraphs`.
+    #[test]
+    fn segments_to_paragraphs_preserves_a_witnessed_ligature_space_boundary() {
+        let segments = vec![seg("bedrijf is gesloten", 0.0, 200.0)];
+        let witnesses = TextRepairWitnesses {
+            hyphens: HyphenWitnesses::default(),
+            words: ["bedrijf".to_string()].into_iter().collect(),
+        };
+
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &[], &witnesses);
+
+        assert_eq!(paragraph_segment_text(&paragraphs[0]), "bedrijf is gesloten");
+    }
+
+    /// The same end-to-end path with no witnesses at all welds the real word
+    /// boundary, documenting the fix's known false positive at the pipeline level
+    /// (not just in the pure `repair_ligature_spaces` unit tests).
+    #[test]
+    fn segments_to_paragraphs_welds_an_unwitnessed_ligature_space_boundary() {
+        let segments = vec![seg("bedrijf is gesloten", 0.0, 200.0)];
+
+        let paragraphs = segments_to_paragraphs(segments, &[(11.0, None)], &[], &TextRepairWitnesses::default());
+
+        assert_eq!(paragraph_segment_text(&paragraphs[0]), "bedrijfis gesloten");
     }
 
     fn para_with_font_size(font_size: f32) -> PdfParagraph {
@@ -10040,7 +10193,7 @@ where new shares are issued;";
             },
             &heading_map,
             Some(12.0),
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
         let level_for = |text: &str| {
             classified
@@ -10875,7 +11028,7 @@ where new shares are issued;";
             },
             &[],
             None,
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
         assert_eq!(
             output.len(),
@@ -10931,7 +11084,7 @@ where new shares are issued;";
             },
             &[],
             None,
-            &HyphenWitnesses::default(),
+            &TextRepairWitnesses::default(),
         );
         assert_eq!(
             output.len(),

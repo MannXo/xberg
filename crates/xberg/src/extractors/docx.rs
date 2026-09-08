@@ -2494,6 +2494,65 @@ mod tests {
         assert_eq!(result.metadata.pages.as_ref().map(|pages| pages.total_count), Some(3));
     }
 
+    /// GH#1592: a table row that straddles a page boundary gets Word's
+    /// `lastRenderedPageBreak` hint written into *every* cell of that row — one
+    /// physical break, one hint per cell. Three such rows must report four pages
+    /// end-to-end (`metadata.pages.total_count` and the highest element `page_number`),
+    /// exactly as three rows with the hint in only their first cell would (the shape
+    /// covered by `should_attribute_docx_elements_to_pages_and_preserve_break_order`'s
+    /// sibling tests in `extraction::docx::parser`).
+    #[tokio::test]
+    async fn gh1592_table_row_break_duplicated_into_every_cell_reports_correct_page_count() {
+        let document_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>before</w:t></w:r></w:p>
+    <w:tbl>
+      <w:tblPr></w:tblPr>
+      <w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>
+      <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+          <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r0c0</w:t></w:r></w:p>
+        </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+          <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r0c1</w:t></w:r></w:p>
+        </w:tc></w:tr>
+      <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+          <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r1c0</w:t></w:r></w:p>
+        </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+          <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r1c1</w:t></w:r></w:p>
+        </w:tc></w:tr>
+      <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+          <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r2c0</w:t></w:r></w:p>
+        </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+          <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r2c1</w:t></w:r></w:p>
+        </w:tc></w:tr>
+    </w:tbl>
+    <w:p><w:r><w:t>after</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#;
+
+        let data = build_test_docx(document_xml);
+        let extractor = DocxExtractor::new();
+        let result = extractor
+            .extract_content(
+                &data,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                &ExtractionConfig::default(),
+            )
+            .await
+            .unwrap();
+        let result =
+            crate::extraction::derive::derive_extraction_result(result, true, crate::core::config::OutputFormat::Plain);
+        let elements = crate::extraction::transform::transform_extraction_result_to_elements(&result);
+
+        assert_eq!(
+            result.metadata.pages.as_ref().map(|pages| pages.total_count),
+            Some(4),
+            "three straddling rows must report four pages, not one collapsed page nor six inflated ones"
+        );
+        let max_page_number = elements.iter().filter_map(|element| element.metadata.page_number).max();
+        assert_eq!(max_page_number, Some(4));
+    }
+
     #[tokio::test]
     async fn test_full_extraction_with_endnotes() {
         let document_xml = r#"<?xml version="1.0" encoding="UTF-8"?>

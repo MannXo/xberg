@@ -1181,6 +1181,21 @@ struct TableContext {
     current_row: Option<TableRow>,
     current_cell: Option<TableCell>,
     paragraph: Option<Paragraph>,
+    /// Ordinal of the most recently opened `<w:tr>` in this table (0 before the first
+    /// row opens), incremented on every `<w:tr>` `Event::Start`.
+    ///
+    /// Together with [`Self::cell_ordinal`], lets a page-break handler firing inside a
+    /// cell identify which row *and which cell of that row* it belongs to, so a
+    /// `lastRenderedPageBreak` hint Word duplicated into another cell of the same
+    /// straddling row can be recognized as an echo of the same physical break — while a
+    /// row deep enough that one cell alone spans several page breaks still counts each
+    /// of that cell's own hints separately (#1592).
+    row_ordinal: u32,
+    /// Ordinal of the most recently opened `<w:tc>` in this table (0 before the first
+    /// cell opens), incremented on every `<w:tc>` `Event::Start`. Monotonic across the
+    /// whole table, not reset per row, so every cell instance gets a distinct id. See
+    /// [`Self::row_ordinal`].
+    cell_ordinal: u32,
 }
 
 impl TableContext {
@@ -1190,6 +1205,8 @@ impl TableContext {
             current_row: None,
             current_cell: None,
             paragraph: None,
+            row_ordinal: 0,
+            cell_ordinal: 0,
         }
     }
 }
@@ -1729,8 +1746,8 @@ fn apply_bookmark_start(e: &BytesStart, table_stack: &mut [TableContext], curren
 /// Page-break bookkeeping threaded through the `<w:br>` and `<w:lastRenderedPageBreak>`
 /// handlers.
 ///
-/// These three fields are one piece of state: every handler that touches any of them
-/// touches all of them, and they are only meaningful relative to one another.
+/// These fields are one piece of state: every handler that touches any of them touches
+/// all of them, and they are only meaningful relative to one another.
 #[derive(Debug, Default)]
 struct PageBreakState {
     /// Breaks seen inside a table, flushed once the outermost `</w:tbl>` closes (#1419).
@@ -1741,6 +1758,20 @@ struct PageBreakState {
     ///
     /// Starts `true` so a break with nothing before it is still recorded.
     text_since_break: bool,
+    /// `(table nesting depth, row ordinal, cell ordinal)` of the most recent table-scoped
+    /// page break event seen — hint or authored, suppressed or recorded.
+    ///
+    /// Word writes `w:lastRenderedPageBreak` into *every* cell of a row that straddles a
+    /// page boundary: one physical break, one hint per cell. [`push_or_defer_page_break`]
+    /// treats a hint as that same duplicated echo — and skips it — only when it shares
+    /// the *row* of this position but names a *different cell*; a hint that shares both
+    /// the row and the cell (a row deep enough that one cell alone spans several breaks)
+    /// is a genuinely new transition and still counts (#1592). Updated on every
+    /// table-scoped break regardless of whether it was suppressed, so a chain of
+    /// alternating duplicate/genuine hints across several cells of one row is tracked
+    /// correctly. Cleared whenever `pending_table` is flushed, since the identity is only
+    /// meaningful relative to the table currently being deferred.
+    last_table_break: Option<(usize, u32, u32)>,
 }
 
 fn section_text_column_height_emu(section: &super::section::SectionProperties) -> Option<i64> {
@@ -1826,6 +1857,18 @@ fn insert_missing_inline_drawing_page_breaks(
 /// since a form feed cannot be written into the middle of a table that renders as a
 /// single markdown block.
 ///
+/// Word writes `w:lastRenderedPageBreak` into *every* cell of a row that straddles a
+/// page boundary — one physical break, one hint per cell — so a table-deferred break
+/// also carries a position: table nesting depth plus [`TableContext::row_ordinal`] and
+/// [`TableContext::cell_ordinal`]. A *hint* (`is_hint = true`) that shares its row and
+/// depth with [`PageBreakState::last_table_break`] but names a *different* cell is that
+/// duplicated echo and is skipped; one that shares row, depth, *and* cell — a row deep
+/// enough that a single cell alone spans several page breaks — is a genuinely new
+/// transition and is not skipped. An authored `<w:br w:type="page"/>` (`is_hint =
+/// false`) is never skipped this way — two deliberate breaks in the same row are
+/// legitimate — but its position is still recorded so a later hint echoing it is
+/// recognized (#1592).
+///
 /// Outside a table, `elements` only gains a `DocumentElement::Paragraph` entry for
 /// the paragraph currently being parsed once its `</w:p>` closes — so a break
 /// encountered before any text has been collected into that paragraph can be pushed
@@ -1840,8 +1883,23 @@ fn push_or_defer_page_break(
     current_paragraph: &Option<Paragraph>,
     elements: &mut Vec<DocumentElement>,
     page_breaks: &mut PageBreakState,
+    is_hint: bool,
 ) {
-    if !table_stack.is_empty() {
+    if let Some(row_context) = table_stack.last() {
+        let position = (table_stack.len(), row_context.row_ordinal, row_context.cell_ordinal);
+        let is_duplicate_row_hint = is_hint
+            && page_breaks
+                .last_table_break
+                .is_some_and(|(depth, row, cell)| depth == position.0 && row == position.1 && cell != position.2);
+        // Track the position of every table-scoped break seen, suppressed or not: a
+        // duplicate hint in cell 2 must not hide a genuine later break in cell 3 behind
+        // cell 1's stale position.
+        page_breaks.last_table_break = Some(position);
+        if is_duplicate_row_hint {
+            // Word's per-cell echo of the row's break: the physical break was already
+            // counted from a different cell of this same row.
+            return;
+        }
         page_breaks.pending_table += 1;
         return;
     }
@@ -1893,6 +1951,7 @@ fn apply_break(
             current_paragraph,
             elements,
             page_breaks,
+            false,
         );
         page_breaks.text_since_break = false;
     } else if let Some(run) = current_run {
@@ -1909,6 +1968,12 @@ fn apply_break(
 /// dropped outright; instead, it is only recorded when real text has been emitted
 /// since the previous break, which is exactly the case where it is *not* a redundant
 /// echo of a break already counted.
+///
+/// Inside a table, Word additionally repeats this same hint once per cell of a row
+/// that straddles a page boundary (#1592); the `text_since_break` check above cannot
+/// tell that apart from a hint in a genuinely new row, since a cell's own text between
+/// two hints resets it regardless. [`push_or_defer_page_break`] carries the
+/// row-and-cell identity check (`is_hint = true`) that does.
 ///
 /// See [`push_or_defer_page_break`] for how (and when) the marker is placed relative
 /// to its enclosing table or paragraph, including the [`PageBreakState::pending_table`]
@@ -1929,6 +1994,7 @@ fn apply_last_rendered_page_break(
         current_paragraph,
         elements,
         page_breaks,
+        true,
     );
     page_breaks.text_since_break = false;
 }
@@ -2463,6 +2529,7 @@ impl<R: Read + Seek> DocxParser<R> {
                         "w:tr" => {
                             if let Some(ctx) = table_stack.last_mut() {
                                 ctx.current_row = Some(TableRow::default());
+                                ctx.row_ordinal += 1;
                             }
                         }
                         "w:trPr" => {
@@ -2475,6 +2542,7 @@ impl<R: Read + Seek> DocxParser<R> {
                         "w:tc" => {
                             if let Some(ctx) = table_stack.last_mut() {
                                 ctx.current_cell = Some(TableCell::default());
+                                ctx.cell_ordinal += 1;
                             }
                         }
                         "w:tcPr" => {
@@ -2895,6 +2963,10 @@ impl<R: Read + Seek> DocxParser<R> {
                                     if deferred_breaks > 0 {
                                         page_breaks.text_since_break = false;
                                     }
+                                    // The row/cell position recorded for dedup (#1592) is only
+                                    // meaningful relative to the table just flushed; clear it so
+                                    // a later, unrelated table's first row can't collide with it.
+                                    page_breaks.last_table_break = None;
                                 }
                             }
                         }
@@ -5340,6 +5412,144 @@ mod tests {
             "page 1 must not be reported as a zero-length blank page"
         );
         assert!(text[boundaries[1].byte_start..boundaries[1].byte_end].contains("After table"));
+    }
+
+    /// GH#1592 reproducer `A-body`: page breaks between body paragraphs, outside any
+    /// table. No table-deferral logic is exercised here at all; this is the baseline
+    /// the table cases below are compared against.
+    #[test]
+    fn gh1592_body_only_breaks_count_once_each() {
+        let xml = wrap_body(
+            r#"<w:p><w:r><w:t>body 0</w:t></w:r></w:p>
+               <w:p><w:r><w:lastRenderedPageBreak/><w:t>body 1</w:t></w:r></w:p>
+               <w:p><w:r><w:lastRenderedPageBreak/><w:t>body 2</w:t></w:r></w:p>"#,
+        );
+        let doc = parse_xml(&xml);
+
+        let (_, boundaries) = doc.extract_text_with_boundaries(true, true);
+        assert_eq!(
+            boundaries.len(),
+            3,
+            "two breaks between body paragraphs must yield three pages"
+        );
+    }
+
+    /// GH#1592 reproducer `B-rows`: one `lastRenderedPageBreak` hint per row, written
+    /// into the first cell only — the shape Word writes when a row's own single-cell
+    /// content is what straddles the boundary. Already correct before the fix; kept as
+    /// a regression guard alongside `C`.
+    #[test]
+    fn gh1592_one_hint_per_row_counts_once_per_row() {
+        let xml = wrap_body(
+            r#"<w:p><w:r><w:t>before</w:t></w:r></w:p>
+               <w:tbl><w:tblPr></w:tblPr><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>
+                 <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r0c0</w:t></w:r></w:p>
+                 </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:t>r0c1</w:t></w:r></w:p>
+                 </w:tc></w:tr>
+                 <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r1c0</w:t></w:r></w:p>
+                 </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:t>r1c1</w:t></w:r></w:p>
+                 </w:tc></w:tr>
+                 <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r2c0</w:t></w:r></w:p>
+                 </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:t>r2c1</w:t></w:r></w:p>
+                 </w:tc></w:tr>
+               </w:tbl>
+               <w:p><w:r><w:t>after</w:t></w:r></w:p>"#,
+        );
+        let doc = parse_xml(&xml);
+
+        let (_, boundaries) = doc.extract_text_with_boundaries(true, true);
+        assert_eq!(boundaries.len(), 4, "three rows, one hint each, must yield four pages");
+    }
+
+    /// GH#1592 reproducer `C-both-cells`: the defect. The *same* three physical breaks
+    /// as `B` above, but Word wrote each row's hint into *both* cells — the shape Word
+    /// actually produces for a straddling row. Duplicates across cells of one row must
+    /// collapse to a single break; rows must still count separately from each other.
+    #[test]
+    fn gh1592_hint_duplicated_into_every_cell_of_a_row_counts_once_per_row() {
+        let xml = wrap_body(
+            r#"<w:p><w:r><w:t>before</w:t></w:r></w:p>
+               <w:tbl><w:tblPr></w:tblPr><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>
+                 <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r0c0</w:t></w:r></w:p>
+                 </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r0c1</w:t></w:r></w:p>
+                 </w:tc></w:tr>
+                 <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r1c0</w:t></w:r></w:p>
+                 </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r1c1</w:t></w:r></w:p>
+                 </w:tc></w:tr>
+                 <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r2c0</w:t></w:r></w:p>
+                 </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>r2c1</w:t></w:r></w:p>
+                 </w:tc></w:tr>
+               </w:tbl>
+               <w:p><w:r><w:t>after</w:t></w:r></w:p>"#,
+        );
+        let doc = parse_xml(&xml);
+
+        let page_break_count = doc
+            .elements
+            .iter()
+            .filter(|e| matches!(e, DocumentElement::PageBreak))
+            .count();
+        assert_eq!(
+            page_break_count, 3,
+            "three rows must contribute three breaks, not six (one per duplicated hint) \
+             or one (collapsed as a single run)"
+        );
+
+        let (_, boundaries) = doc.extract_text_with_boundaries(true, true);
+        assert_eq!(
+            boundaries.len(),
+            4,
+            "the per-cell duplicated hint must not inflate or collapse the row count"
+        );
+    }
+
+    /// GH#1592 reproducer `D-one-cell-deep`: all breaks fall inside a single deep cell
+    /// of a single row, each preceded by that cell's own paragraph text. These are
+    /// genuinely distinct transitions and must all count, even though they share both
+    /// the table and the row with each other — the row-level dedup added for `C` must
+    /// key on cell identity too, or this collapses to one break exactly like `C` did.
+    #[test]
+    fn gh1592_multiple_hints_in_one_deep_cell_of_one_row_all_count() {
+        let xml = wrap_body(
+            r#"<w:p><w:r><w:t>before</w:t></w:r></w:p>
+               <w:tbl><w:tblPr></w:tblPr><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>
+                 <w:tr><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:t>long 0</w:t></w:r></w:p>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>long 1</w:t></w:r></w:p>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>long 2</w:t></w:r></w:p>
+                     <w:p><w:r><w:lastRenderedPageBreak/></w:r><w:r><w:t>long 3</w:t></w:r></w:p>
+                 </w:tc><w:tc><w:tcPr><w:tcW w:w="2000" w:type="dxa"/></w:tcPr>
+                     <w:p><w:r><w:t>side</w:t></w:r></w:p>
+                 </w:tc></w:tr>
+               </w:tbl>
+               <w:p><w:r><w:t>after</w:t></w:r></w:p>"#,
+        );
+        let doc = parse_xml(&xml);
+
+        let page_break_count = doc
+            .elements
+            .iter()
+            .filter(|e| matches!(e, DocumentElement::PageBreak))
+            .count();
+        assert_eq!(
+            page_break_count, 3,
+            "three hints inside one cell of one row are three distinct transitions"
+        );
+
+        let (_, boundaries) = doc.extract_text_with_boundaries(true, true);
+        assert_eq!(boundaries.len(), 4);
     }
 
     /// GH#1559: Word can paginate a vertical block of inline images without

@@ -774,6 +774,8 @@ impl<'a, 'b> HtmlWalker<'a, 'b> {
                     col_span: cell.col_span,
                     is_header: cell.is_header,
                     bbox: None,
+                    heading_level: None,
+                    style_name: None,
                 });
             },
         );

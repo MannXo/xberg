@@ -563,6 +563,23 @@ pub struct GridCell {
     /// Bounding box for this cell (if available).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bbox: Option<BoundingBox>,
+    /// Outline level (1-6) of the heading style this cell's text carries, when it has one.
+    ///
+    /// A DOCX banner row -- row 0, one cell spanning the grid, styled `Heading1`..`Heading6` --
+    /// is what Word's navigation pane and a `TOC` field treat as the document's outline, but as
+    /// a table cell it reached consumers as anonymous text (GH#1587). `content` is deliberately
+    /// left as the bare cell text: prefixing it with `#` would put a markdown heading inside a
+    /// table cell, which is invalid where it lands and changes text every existing consumer
+    /// already reads. This field is the signal instead, so a caller can decide for itself
+    /// whether a `heading 2` in a banner row is a section title or a column label. ~keep
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heading_level: Option<u8>,
+    /// Human-readable name of the paragraph style applied to this cell's text (`heading 2`).
+    ///
+    /// Carries the style even when it resolves to no outline level, so a caller can key on a
+    /// named style this crate does not map to a heading. See [`GridCell::heading_level`]. ~keep
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_name: Option<String>,
 }
 
 fn default_span() -> u32 {
@@ -1423,6 +1440,8 @@ mod tests {
                     col_span: 1,
                     is_header: true,
                     bbox: None,
+                    heading_level: None,
+                    style_name: None,
                 },
                 GridCell {
                     content: "Cell 1".to_string(),
@@ -1432,6 +1451,8 @@ mod tests {
                     col_span: 1,
                     is_header: false,
                     bbox: None,
+                    heading_level: None,
+                    style_name: None,
                 },
             ],
         };

@@ -666,6 +666,8 @@ mod tests {
                     col_span: 1,
                     is_header: true,
                     bbox: None,
+                    heading_level: None,
+                    style_name: None,
                 },
                 GridCell {
                     content: "Q3".to_string(),
@@ -675,6 +677,8 @@ mod tests {
                     col_span: 1,
                     is_header: true,
                     bbox: None,
+                    heading_level: None,
+                    style_name: None,
                 },
             ],
         };
@@ -716,6 +720,8 @@ mod tests {
                 col_span: 1,
                 is_header: false,
                 bbox: None,
+                heading_level: None,
+                style_name: None,
             }],
         };
         let structure = DocumentStructure {

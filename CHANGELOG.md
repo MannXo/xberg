@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Table.cell_styles` and `GridCell.heading_level` / `GridCell.style_name` expose the paragraph
+  style a DOCX table cell carries. A heading styled `Heading1`..`Heading6` inside a `w:tc` — the
+  banner row forms, questionnaires and datasheets use as a section title, and what Word's
+  navigation pane and a `TOC` field treat as the document outline — previously reached every
+  consumer as anonymous cell text. Cell text is deliberately unchanged: prefixing it with `#`
+  would put a markdown heading inside a table cell. The style travels beside the text instead, so
+  a caller can decide whether a `heading 2` in a banner row is a section title or a column label.
+  `cell_styles` is sparse and omitted entirely for tables whose cells carry no style, so ordinary
+  tables serialise exactly as before (GH#1587).
+
 ### Fixed
 
 - Tesseract `psm = 0` is now rejected at configuration validation. PSM 0 is Tesseract's

@@ -314,7 +314,8 @@ fn build_internal_document(
                 // renders correctly (xberg-io/xberg#1549). ~keep
                 let cells = table.to_cell_grid(crate::extraction::docx::parser::Paragraph::runs_to_markdown);
                 if !cells.is_empty() {
-                    builder.push_table_from_cells(&cells, Some(current_page), None);
+                    let cell_styles = resolve_table_cell_styles(doc, table);
+                    builder.push_table_from_cells_with_styles(&cells, &cell_styles, Some(current_page), None);
                 }
             }
             crate::extraction::docx::parser::DocumentElement::Drawing(idx) => {
@@ -699,7 +700,7 @@ fn parse_docx_core(
         .enumerate()
         .map(|(idx, table)| {
             let page_number = table_page_nums.get(idx).copied().unwrap_or(1) as u32;
-            convert_docx_table_to_table(table, page_number)
+            convert_docx_table_to_table(&doc, table, page_number)
         })
         .collect();
 
@@ -767,9 +768,43 @@ impl Plugin for DocxExtractor {
 /// * `docx_table` - The parsed DOCX table
 /// * `page_number` - 1-based page number the table appears on
 ///
+/// Resolve each table cell's paragraph style into the sparse list `Table::cell_styles` carries.
+///
+/// Only cells that declare a style produce an entry, and an entry is kept only when the style
+/// resolves to an outline level or a display name -- a cell styled `Normal` adds nothing. Grid
+/// positions come from `Table::to_cell_style_grid`, which lays out `gridSpan`/`vMerge` exactly
+/// as the text grid does, so a style always lands on the cell whose text it belongs to (GH#1587).
+fn resolve_table_cell_styles(
+    doc: &crate::extraction::docx::parser::Document,
+    table: &crate::extraction::docx::parser::Table,
+) -> Vec<crate::types::TableCellStyle> {
+    let mut resolved = Vec::new();
+    for (row_idx, row) in table.to_cell_style_grid().iter().enumerate() {
+        for (col_idx, style_id) in row.iter().enumerate() {
+            let Some(style_id) = style_id else { continue };
+            let heading_level = doc.resolve_heading_level(style_id);
+            let style_name = doc.resolve_style_name(style_id);
+            if heading_level.is_none() && style_name.is_none() {
+                continue;
+            }
+            resolved.push(crate::types::TableCellStyle {
+                row: row_idx as u32,
+                col: col_idx as u32,
+                heading_level,
+                style_name,
+            });
+        }
+    }
+    resolved
+}
+
 /// # Returns
 /// * `Table` - Converted table with cells and markdown representation
-fn convert_docx_table_to_table(docx_table: &crate::extraction::docx::parser::Table, page_number: u32) -> Table {
+fn convert_docx_table_to_table(
+    doc: &crate::extraction::docx::parser::Document,
+    docx_table: &crate::extraction::docx::parser::Table,
+    page_number: u32,
+) -> Table {
     // Same grid as the element builder's Table arm above, and the same reason: a
     // gridSpan/vMerge cell must appear once, not cloned per covered column/row
     // (xberg-io/xberg#1549). ~keep
@@ -782,6 +817,7 @@ fn convert_docx_table_to_table(docx_table: &crate::extraction::docx::parser::Tab
         markdown,
         page_number,
         bounding_box: None,
+        cell_styles: resolve_table_cell_styles(doc, docx_table),
         ..Default::default()
     }
 }
@@ -1369,7 +1405,8 @@ mod tests {
 
         table.rows.push(data_row);
 
-        let result = convert_docx_table_to_table(&table, 1);
+        let doc = crate::extraction::docx::parser::Document::default();
+        let result = convert_docx_table_to_table(&doc, &table, 1);
 
         assert_eq!(result.page_number, 1);
         assert_eq!(result.cells.len(), 2);
@@ -1377,6 +1414,59 @@ mod tests {
         assert_eq!(result.cells[1], vec!["Alice", "30"]);
         assert!(result.markdown.contains("| Name | Age |"));
         assert!(result.markdown.contains("| Alice | 30 |"));
+    }
+
+    /// GH#1587: a `Heading2` paragraph in a table cell reached consumers as anonymous cell
+    /// text. The cell text must stay bare -- prefixing it with `##` would put a markdown
+    /// heading inside a table cell -- so the style travels beside it in `cell_styles`. ~keep
+    #[test]
+    fn should_report_a_heading_styled_table_cell_in_cell_styles() {
+        use crate::extraction::docx::parser::{Document, Paragraph, Run, Table as DocxTable, TableCell, TableRow};
+
+        let mut banner_row = TableRow::default();
+        let mut banner_cell = TableCell::default();
+        let mut banner_para = Paragraph::new();
+        banner_para.add_run(Run::new("Cell Section".to_string()));
+        banner_para.style = Some("Heading2".to_string());
+        banner_cell.paragraphs.push(banner_para);
+        banner_row.cells.push(banner_cell);
+
+        let mut plain_row = TableRow::default();
+        let mut plain_cell = TableCell::default();
+        let mut plain_para = Paragraph::new();
+        plain_para.add_run(Run::new("left".to_string()));
+        plain_cell.paragraphs.push(plain_para);
+        plain_row.cells.push(plain_cell);
+
+        let mut table = DocxTable::new();
+        table.rows.push(banner_row);
+        table.rows.push(plain_row);
+
+        let doc = Document::default();
+        let result = convert_docx_table_to_table(&doc, &table, 1);
+
+        assert_eq!(
+            result.cells[0][0], "Cell Section",
+            "cell text must stay bare, with no heading markers"
+        );
+        assert_eq!(
+            result.cell_styles.len(),
+            1,
+            "only the styled cell should produce an entry"
+        );
+        let style = &result.cell_styles[0];
+        assert_eq!((style.row, style.col), (0, 0));
+        assert_eq!(
+            style.heading_level,
+            Some(2),
+            "Heading2 must resolve to outline level 2 even with no StyleCatalog"
+        );
+
+        let unstyled = convert_docx_table_to_table(&doc, &DocxTable::new(), 1);
+        assert!(
+            unstyled.cell_styles.is_empty(),
+            "a table with no styled cells must not gain entries"
+        );
     }
 
     /// Helper: build a minimal DOCX ZIP in memory with given document.xml content.

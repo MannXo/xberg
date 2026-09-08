@@ -180,6 +180,22 @@ impl InternalDocumentBuilder {
         page: Option<u32>,
         bbox: Option<BoundingBox>,
     ) -> u32 {
+        self.push_table_from_cells_with_styles(cells, &[], page, bbox)
+    }
+
+    /// Push a table whose cells carry resolved paragraph styles, so a heading inside a cell
+    /// stays discoverable (GH#1587).
+    ///
+    /// `cell_styles` is sparse: only cells that actually declare a style appear. Everything else
+    /// behaves exactly as [`Self::push_table_from_cells`], which delegates here with an empty
+    /// list, so no existing caller changes shape. ~keep
+    pub fn push_table_from_cells_with_styles(
+        &mut self,
+        cells: &[Vec<String>],
+        cell_styles: &[crate::types::TableCellStyle],
+        page: Option<u32>,
+        bbox: Option<BoundingBox>,
+    ) -> u32 {
         // A cell keeps its equation in the cell, so the equation cannot also be
         // an element without emptying the cell or repeating it beside the table.
         // The formula list is still expected to hold every formula in the
@@ -210,6 +226,7 @@ impl InternalDocumentBuilder {
             markdown,
             page_number: page.unwrap_or(0),
             bounding_box: bbox,
+            cell_styles: cell_styles.to_vec(),
             ..Default::default()
         };
         self.push_table(table, page, bbox)

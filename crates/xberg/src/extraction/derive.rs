@@ -493,6 +493,10 @@ fn table_to_grid(table: &Table) -> TableGrid {
     let mut cells = Vec::new();
     for (row_idx, row) in table.cells.iter().enumerate() {
         for (col_idx, cell_content) in row.iter().enumerate() {
+            let style = table
+                .cell_styles
+                .iter()
+                .find(|s| s.row as usize == row_idx && s.col as usize == col_idx);
             cells.push(GridCell {
                 content: cell_content.clone(),
                 row: row_idx as u32,
@@ -501,6 +505,8 @@ fn table_to_grid(table: &Table) -> TableGrid {
                 col_span: 1,
                 is_header: row_idx == 0,
                 bbox: None,
+                heading_level: style.and_then(|s| s.heading_level),
+                style_name: style.and_then(|s| s.style_name.clone()),
             });
         }
     }

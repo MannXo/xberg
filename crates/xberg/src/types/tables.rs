@@ -61,6 +61,20 @@ pub struct Table {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub table_id: Option<String>,
 
+    /// Paragraph styles carried by individual cells, for the cells that have one.
+    ///
+    /// Sparse and flat on purpose. A DOCX banner row -- row 0, one cell spanning the grid,
+    /// styled `Heading1`..`Heading6` -- is what Word's navigation pane and a `TOC` field treat
+    /// as the document outline, but as a table cell it reached consumers as anonymous text
+    /// (GH#1587). `cells` keeps the bare text: prefixing it with `#` would put a markdown
+    /// heading inside a table cell, which is invalid where it lands and would change text every
+    /// existing consumer already reads. This list is the signal instead.
+    ///
+    /// Entries are only emitted for cells that actually carry a style, so an ordinary table
+    /// serialises exactly as it did before. Indices are into `cells`. ~keep
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cell_styles: Vec<TableCellStyle>,
+
     /// Header cells for this fragment, i.e. the first row of `cells`.
     ///
     /// Populated even when this fragment's own header row was merged away or
@@ -69,6 +83,25 @@ pub struct Table {
     /// could be determined.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub columns: Option<Vec<String>>,
+}
+
+/// The paragraph style a single table cell's text carries, located by grid position.
+///
+/// Flat rather than a nested `Vec<Vec<Option<..>>>`: the nested shape marshals badly across the
+/// FFI bindings, and the data is sparse anyway. See [`Table::cell_styles`]. ~keep
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
+pub struct TableCellStyle {
+    /// Zero-indexed row of the cell this style belongs to.
+    pub row: u32,
+    /// Zero-indexed column of the cell this style belongs to.
+    pub col: u32,
+    /// Outline level 1-6 when the style resolves to a heading, otherwise `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heading_level: Option<u8>,
+    /// Human-readable style name, e.g. `heading 2`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style_name: Option<String>,
 }
 
 /// Individual table cell with content and optional styling.

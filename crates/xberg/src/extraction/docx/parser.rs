@@ -1059,6 +1059,44 @@ impl Table {
         cells
     }
 
+    /// Build the per-cell paragraph style ids for this table, in the exact layout
+    /// [`Table::to_cell_grid`] produces.
+    ///
+    /// Same origin-once rule: a `gridSpan`/`vMerge` cell contributes its style at its origin and
+    /// `None` in every column it covers, so this grid indexes cell-for-cell against the text grid
+    /// and the two cannot drift apart. A cell takes the first style any of its paragraphs
+    /// declares, which is the banner-row case GH#1587 is about -- a single heading-styled
+    /// paragraph in a merged row-0 cell.
+    ///
+    /// Returns style *ids* (`"Heading2"`); resolving those to an outline level and a display name
+    /// needs the document's `StyleCatalog`, which lives on the parser, not on `Table`. ~keep
+    pub(crate) fn to_cell_style_grid(&self) -> Vec<Vec<Option<String>>> {
+        let mut styles: Vec<Vec<Option<String>>> = Vec::new();
+        for row in &self.rows {
+            let mut row_styles = Vec::new();
+            for cell in &row.cells {
+                let is_vmerge_continue = cell
+                    .properties
+                    .as_ref()
+                    .is_some_and(|p| matches!(p.v_merge, Some(super::table::VerticalMerge::Continue)));
+
+                let style = if is_vmerge_continue {
+                    None
+                } else {
+                    cell.paragraphs.iter().find_map(|p| p.style.clone())
+                };
+                row_styles.push(style);
+
+                let span = cell.properties.as_ref().and_then(|p| p.grid_span).unwrap_or(1);
+                for _ in 1..span {
+                    row_styles.push(None);
+                }
+            }
+            styles.push(row_styles);
+        }
+        styles
+    }
+
     /// Render this table as a markdown table.
     ///
     /// Uses table row and cell properties to improve formatting:

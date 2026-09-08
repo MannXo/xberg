@@ -468,6 +468,8 @@ fn cells_to_grid(cells: &[Vec<String>]) -> TableGrid {
                 col_span: 1,
                 is_header: row_idx == 0,
                 bbox: None,
+                heading_level: None,
+                style_name: None,
             });
         }
     }

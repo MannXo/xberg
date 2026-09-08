@@ -3480,6 +3480,13 @@ jobs:
           cd ../../..
 
           # Stamp main package's optionalDependencies with the packed platforms.
+          # The committed crates/xberg-node/package.json deliberately carries NO
+          # optionalDependencies: this assignment overwrites the key wholesale, so any
+          # committed value is write-only, and pinning it to the in-development version
+          # made `pnpm install --frozen-lockfile` unsatisfiable between the version bump
+          # and the npm publish -- which is what kept CI Docs red across every release.
+          # Do not reintroduce it. The "Assert every optionalDependency is installable"
+          # step below is what guarantees this stamp actually produced something. ~keep
           tmp_pkg_json="$(mktemp)"
           optional_deps_json='{}'
           for platform_pkg_json in crates/xberg-node/npm/*/package.json; do

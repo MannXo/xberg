@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# The committed package.json carries no optionalDependencies on purpose -- this script
+# assigns the key wholesale from the platform packages that actually built, so a
+# committed value would be write-only while making the pnpm lockfile unsatisfiable
+# between a version bump and the npm publish. Do not reintroduce it. ~keep
+
 pkg_dir="${1:-crates/xberg-node}"
 
 if [ ! -d "$pkg_dir" ]; then

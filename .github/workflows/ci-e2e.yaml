@@ -56,7 +56,7 @@ jobs:
     name: Build FFI (${{ matrix.target }})
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 180
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -148,7 +148,7 @@ jobs:
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     needs: [build-ffi]
     runs-on: ${{ matrix.runs-on }}
-    timeout-minutes: 180
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:

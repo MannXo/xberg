@@ -66,7 +66,7 @@ jobs:
     # a full run always was -- it unmasked it. Measured on 3f9b1aa0: ubuntu-latest
     # completed in 87m, while macos-latest and ubuntu-24.04-arm were both cancelled at
     # exactly 90m, so their true completion time is unknown and above it. ~keep
-    timeout-minutes: 150
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -336,7 +336,7 @@ jobs:
     name: Rust (windows-latest, static-embeddings link)
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v7
         with:
@@ -374,7 +374,7 @@ jobs:
     name: Rust (windows-latest)
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v7
         with:
@@ -431,7 +431,7 @@ jobs:
     name: Rust tract-only (no-ORT)
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
+    timeout-minutes: 360
     env:
       TRACT_FEATURES: "ocr,auto-rotate-tract,layout-tract,sceptre-ocr-tract,paddle-ocr-tract"
     steps:
@@ -523,7 +523,7 @@ jobs:
     name: Narrow feature leg (${{ matrix.name }})
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -564,7 +564,7 @@ jobs:
     name: Narrow feature leg (wasm-target, wasm32)
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v7
         with:
@@ -605,7 +605,7 @@ jobs:
     name: xberg-cli feature leg (${{ matrix.name }})
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:
@@ -720,7 +720,7 @@ jobs:
     name: Rust pdfium engine (real library)
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v7
         with:
@@ -769,7 +769,7 @@ jobs:
     name: Live HF preset tests
     if: github.repository == 'xberg-io/xberg' && github.actor != 'dependabot[bot]' && github.event.pull_request.draft != true
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 45
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v7
         with:

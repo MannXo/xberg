@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Xberg. All rights reserved.
-"""MinerU 3.4.4 extraction wrapper for the benchmark harness.
+"""MinerU 3.4.5 extraction wrapper for the benchmark harness.
 
 Supports three modes:
 - sync: process one file through the pipeline
@@ -7,7 +7,7 @@ Supports three modes:
 - server: persistent mode reading paths from stdin
 
 The batch path intentionally calls MinerU's public ``do_parse`` entry point once.
-In MinerU 3.4.4, that delegates to ``doc_analyze_streaming``, whose processing
+In MinerU 3.4.5, that delegates to ``doc_analyze_streaming``, whose processing
 windows batch model inference across document boundaries.
 """
 
@@ -54,7 +54,7 @@ _hf_hub_cache = os.environ.get("HF_HUB_CACHE") or str(
 )
 os.environ.setdefault("FTLANG_CACHE", str(Path(_hf_hub_cache) / "fasttext-langdetect"))
 
-PINNED_MINERU_VERSION = "3.4.4"
+PINNED_MINERU_VERSION = "3.4.5"
 # The benchmark corpus is English and the competitor wrappers request English
 # (PaddleOCR lang="en", unstructured languages=["eng"]). MinerU exposes no
 # English-only OCR model: normalize_ocr_model_lang aliases "en" -> "ch", so this
@@ -106,7 +106,7 @@ def _tesseract_to_paddle_lang(ocr_language: str | None) -> str:
 def _native_pipeline_markdown(
     file_paths: list[str], ocr_enabled: bool, ocr_language: str | None = None
 ) -> tuple[list[str], float]:
-    """Run one MinerU 3.4.4 multi-document pipeline invocation."""
+    """Run one MinerU 3.4.5 multi-document pipeline invocation."""
     if not file_paths:
         return [], 0.0
 

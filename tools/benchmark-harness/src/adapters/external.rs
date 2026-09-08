@@ -572,7 +572,7 @@ pub fn create_pymupdf4llm_adapter(ocr_enabled: bool) -> Result<SubprocessAdapter
     )
 }
 
-/// Creates a subprocess adapter for MinerU 3.4.4.
+/// Creates a subprocess adapter for MinerU 3.4.5.
 ///
 /// Batch mode invokes `mineru.cli.common.do_parse` once, which delegates to
 /// `doc_analyze_streaming` for cross-document model batching.

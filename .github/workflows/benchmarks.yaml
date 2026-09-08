@@ -1128,7 +1128,12 @@ jobs:
           path: |
             ~/.cache/huggingface/hub
             ~/mineru.json
-          key: mineru-models-3.4.4-cfg-v5-kor-jpn-${{ runner.os }}-${{ runner.arch }}
+          # `gen6` is a generation counter for the cached weights + ~/mineru.json, NOT a
+          # MinerU version -- deliberately so, because the two move independently: 3.4.5
+          # changed only docx_converter.py, pdf_text_tool.py and version.py, leaving
+          # MINERU_CONFIG_VERSION and every model-resolution path byte-identical. Bump it
+          # when the weight set or the mineru.json schema changes, not when MinerU does. ~keep
+          key: mineru-weights-gen6-kor-jpn-${{ runner.os }}-${{ runner.arch }}
 
       - name: Warm MinerU model weights (native + OCR pipelines)
         if: steps.mineru-model-cache.outputs.cache-hit != 'true'

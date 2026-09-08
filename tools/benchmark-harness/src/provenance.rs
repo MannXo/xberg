@@ -424,7 +424,7 @@ fn worker_semantics(mode: BenchmarkMode, capability: Option<BatchCapability>) ->
             "OCR page workers; not document-level concurrency"
         }
         (BenchmarkMode::Batch, Some(BatchEntryPoint::MineruDoParse)) => {
-            "MinerU 3.4.4 do_parse pipeline; model batches span documents through doc_analyze_streaming processing windows"
+            "MinerU 3.4.5 do_parse pipeline; model batches span documents through doc_analyze_streaming processing windows"
         }
         (BenchmarkMode::Batch, None) => "batch harness concurrency",
     }
@@ -706,7 +706,7 @@ mod tests {
                     per_item_timing: false,
                 })
             ),
-            "MinerU 3.4.4 do_parse pipeline; model batches span documents through doc_analyze_streaming processing windows"
+            "MinerU 3.4.5 do_parse pipeline; model batches span documents through doc_analyze_streaming processing windows"
         );
     }
 

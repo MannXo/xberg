@@ -22,20 +22,29 @@ dev = [
 # docling-slim>=2.117.0, which also serves the single-file path via the `docling` namespace.
 # docling-slim ships no OCR engine; EasyOCR is docling's default OCR backend and is
 # required by the OCR cohorts (and the EasyOCR model-prefetch step), so add it explicitly.
-bench-docling = ["docling-jobkit==3.2.0", "easyocr>=1.7.2"]
-bench-markitdown = ["markitdown[all]==0.1.6"]
-bench-mineru = ["mineru[pipeline]==3.4.4", "onnxruntime", "six"]
+#
+# 3.5.0 is a floor, not a preference. docling's default `pdf_backend` became
+# `THREADED_DOCLING_PARSE`, but jobkit 3.2.0's converter manager matched only
+# `DOCLING_PARSE` and `PYPDFIUM2` and fell through to
+# `raise RuntimeError("Unexpected PDF backend type ...")`. Every batch document raised, so
+# the benchmark scored docling 0/14 and failed the run's minimum success rate. 3.5.0 adds
+# the missing branch (`convert/manager.py`, verified by diffing both wheels). Do not drop
+# below it, and if this failure returns, compare jobkit's handled `PdfBackend` variants
+# against the default docling resolves to before assuming the adapter is at fault. ~keep
+bench-docling = ["docling-jobkit==3.5.0", "easyocr>=1.7.2"]
+bench-markitdown = ["markitdown[all]==0.1.7"]
+bench-mineru = ["mineru[pipeline]==3.4.5", "onnxruntime", "six"]
 bench-paddleocr-python = [
   "numpy>=2.0",
-  "paddleocr==3.4.0; python_version < '3.14'",
-  "paddlepaddle==3.2.1; python_version < '3.14'",
+  "paddleocr==3.7.0; python_version < '3.14'",
+  "paddlepaddle==3.3.1; python_version < '3.14'",
   "pillow>=10.0.0",
-  "pymupdf==1.28.0",
+  "pymupdf==1.28.2",
   "setuptools>=80.9; python_version < '3.14'",
 ]
-bench-pymupdf4llm = ["pillow>=10.0.0", "pymupdf-layout==1.28.0", "pymupdf4llm==1.28.0"]
-bench-rapidocr = ["numpy>=2.0", "onnxruntime==1.28.0", "pillow>=10.0.0", "pymupdf==1.28.0", "rapidocr==3.9.2"]
-bench-unstructured = ["unstructured[docx,pdf,pptx,xlsx,md,odt,rtf,epub,org,rst]==0.24.1"]
+bench-pymupdf4llm = ["pillow>=10.0.0", "pymupdf-layout==1.28.2", "pymupdf4llm==1.28.2"]
+bench-rapidocr = ["numpy>=2.0", "onnxruntime==1.29.0", "pillow>=10.0.0", "pymupdf==1.28.2", "rapidocr==3.9.2"]
+bench-unstructured = ["unstructured[docx,pdf,pptx,xlsx,md,odt,rtf,epub,org,rst]==0.27.5"]
 
 [tool.uv]
 environments = ["python_version >= '3.11'"]

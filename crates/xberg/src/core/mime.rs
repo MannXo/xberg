@@ -6,7 +6,14 @@
 //! Format information is centralized in the `FORMATS` registry. All extension-to-MIME
 //! mappings and supported MIME type validation are derived from this single source of truth.
 
-#[cfg(any(feature = "office", feature = "hwpx", feature = "iwork", feature = "archives"))]
+#[cfg(any(
+    feature = "office",
+    feature = "hwpx",
+    feature = "iwork",
+    feature = "archives",
+    feature = "hwp",
+    feature = "email"
+))]
 use crate::extractors::security::SecurityLimits;
 use crate::{Result, XbergError};
 use serde::{Deserialize, Serialize};
@@ -35,6 +42,9 @@ const SQLITE_APPLICATION_ID_LENGTH: usize = 4;
 const GEOPACKAGE_APPLICATION_ID: &[u8; SQLITE_APPLICATION_ID_LENGTH] = b"GPKG";
 const GEOPACKAGE_LEGACY_APPLICATION_ID: &[u8; SQLITE_APPLICATION_ID_LENGTH] = b"GP10";
 const J2C_CODESTREAM_MAGIC: &[u8; 4] = b"\xFF\x4F\xFF\x51";
+/// MS-CFB (compound binary file) signature, shared by legacy .doc/.xls/.ppt.
+#[cfg(any(feature = "office", feature = "hwp", feature = "email"))]
+const OLE2_MAGIC: [u8; 8] = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PackageInspection {
@@ -268,6 +278,7 @@ pub(crate) const POWER_POINT_MIME_TYPE: &str =
 pub(crate) const DOCX_MIME_TYPE: &str = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 pub(crate) const LEGACY_WORD_MIME_TYPE: &str = "application/msword";
 pub(crate) const LEGACY_POWERPOINT_MIME_TYPE: &str = "application/vnd.ms-powerpoint";
+pub(crate) const LEGACY_EXCEL_MIME_TYPE: &str = "application/vnd.ms-excel";
 
 pub(crate) const PST_MIME_TYPE: &str = "application/vnd.ms-outlook-pst";
 pub(crate) const WPD_MIME_TYPE: &str = "application/vnd.wordperfect";
@@ -1279,7 +1290,19 @@ fn detect_mime_type_from_file_content(
     let mut from_magic = match detect_mime_type_from_bytes_with_inspection(header, package_inspection) {
         Ok(detected) => detected,
         Err(_) if json_candidate => JSON_MIME_TYPE.to_string(),
-        Err(_) => return None,
+        Err(_) => {
+            // An MS-CFB compound document (.doc/.xls/.ppt) cannot be typed from a
+            // fixed-size prefix: identifying it means following the FAT sector
+            // chain to the root directory entry, and a truncated buffer references
+            // sectors that are not present in `header` (#1590). Escape to a
+            // structure-aware read over the file the same way the ZIP branch below
+            // escapes to `detect_zip_package` for an inconclusive archive header. ~keep
+            #[cfg(any(feature = "office", feature = "hwp", feature = "email"))]
+            if package_inspection == PackageInspection::FullArchive && header.starts_with(&OLE2_MAGIC[..]) {
+                return detect_ole2_package(&mut *file, &SecurityLimits::default());
+            }
+            return None;
+        }
     };
     if matches!(from_magic.as_str(), PLAIN_TEXT_MIME_TYPE | OCTET_STREAM_MIME_TYPE) && json_candidate {
         from_magic = JSON_MIME_TYPE.to_string();
@@ -1628,6 +1651,37 @@ fn detect_office_format_from_archive<R: Read + Seek>(archive: &mut zip::ZipArchi
         return Some(IWORK_PAGES_MIME_TYPE);
     }
     None
+}
+
+/// Identify a legacy MS-CFB compound document (.doc/.xls/.ppt) from its root
+/// storage CLSID.
+///
+/// Mirrors the CLSID table `infer`'s `ole2()` matcher uses, but reads through
+/// a `Read + Seek` source instead of a fixed byte slice. A compound file
+/// cannot be typed from a truncated prefix: locating the root directory entry
+/// means following the FAT sector chain, and a chain built from a partial
+/// read references sectors the buffer does not contain (#1590).
+/// `cfb::CompoundFile::open` seeks and reads only the header, FAT, and
+/// directory sectors it needs, so this does not load the file into memory —
+/// the same shape `detect_zip_package` uses for a ZIP-based package.
+/// `limits.max_archive_size` still bounds the file this is attempted
+/// against, mirroring the bound `zip_central_directory_within_limits` applies
+/// before it opens a ZIP central directory.
+#[cfg(any(feature = "office", feature = "hwp", feature = "email"))]
+fn detect_ole2_package<R: Read + Seek>(mut reader: R, limits: &SecurityLimits) -> Option<String> {
+    let length = reader.seek(SeekFrom::End(0)).ok()?;
+    if length > limits.max_archive_size as u64 {
+        return None;
+    }
+    reader.seek(SeekFrom::Start(0)).ok()?;
+    let compound_file = cfb::CompoundFile::open(reader).ok()?;
+    let mime_type = match compound_file.root_entry().clsid().to_string().as_str() {
+        "00020810-0000-0000-c000-000000000046" | "00020820-0000-0000-c000-000000000046" => LEGACY_EXCEL_MIME_TYPE,
+        "00020906-0000-0000-c000-000000000046" => LEGACY_WORD_MIME_TYPE,
+        "64818d10-4f9b-11cf-86ea-00aa00b929e8" => LEGACY_POWERPOINT_MIME_TYPE,
+        _ => return None,
+    };
+    Some(mime_type.to_string())
 }
 
 #[cfg(any(feature = "office", feature = "hwpx", feature = "iwork", feature = "archives"))]
@@ -2814,6 +2868,70 @@ mod tests {
         .unwrap();
 
         assert_eq!(detected, JSON_MIME_TYPE);
+    }
+
+    /// Build an in-memory MS-CFB compound document with the given root storage
+    /// CLSID, padded with a stream large enough to push the file past
+    /// `MIME_SNIFF_LENGTH`. Mirrors `build_test_ppt_ole` in `extraction/ppt/mod.rs`.
+    #[cfg(feature = "office")]
+    fn build_test_ole2_document(clsid: &str, padding_len: usize) -> Vec<u8> {
+        let cursor = Cursor::new(Vec::new());
+        let mut compound_file = cfb::CompoundFile::create(cursor).expect("create in-memory OLE container");
+        compound_file
+            .set_storage_clsid("/", uuid::Uuid::parse_str(clsid).expect("valid CLSID literal"))
+            .expect("set root storage CLSID");
+        compound_file
+            .create_stream("/Padding")
+            .expect("create padding stream")
+            .write_all(&vec![0_u8; padding_len])
+            .expect("write padding stream");
+        compound_file.into_inner().into_inner()
+    }
+
+    #[cfg(feature = "office")]
+    #[test]
+    fn content_only_bytes_and_file_agree_on_a_legacy_ole2_document_past_the_sniff_window() {
+        // Before the fix: `detect_or_validate_bytes` (whole buffer) detected
+        // these correctly via `infer`'s `ole2()` matcher, while
+        // `detect_or_validate_file` (bounded MIME_SNIFF_LENGTH prefix) failed
+        // outright with "Could not detect MIME type from file content" — a
+        // compound file cannot be typed from a truncated prefix because the FAT
+        // sector chain that locates the root directory entry references
+        // sectors the prefix does not contain (#1590). Same bytes, different
+        // answer; a real Word/Excel/PowerPoint document is essentially always
+        // larger than the 4096-byte sniff window. ~keep
+        use crate::core::config::MimeDetectionPolicy;
+
+        let cases = [
+            ("00020906-0000-0000-c000-000000000046", LEGACY_WORD_MIME_TYPE),
+            ("00020810-0000-0000-c000-000000000046", LEGACY_EXCEL_MIME_TYPE),
+            ("64818d10-4f9b-11cf-86ea-00aa00b929e8", LEGACY_POWERPOINT_MIME_TYPE),
+        ];
+
+        for (clsid, expected_mime) in cases {
+            let content = build_test_ole2_document(clsid, MIME_SNIFF_LENGTH * 2);
+            assert!(
+                content.len() > MIME_SNIFF_LENGTH,
+                "fixture for {clsid} must exceed the sniff window to exercise #1590"
+            );
+
+            let from_bytes = detect_or_validate_bytes(&content, None, None, MimeDetectionPolicy::ContentOnly)
+                .unwrap_or_else(|error| panic!("bytes API failed to detect {clsid}: {error}"));
+            assert_eq!(from_bytes, expected_mime, "bytes API mismatch for {clsid}");
+
+            let dir = tempdir().unwrap();
+            let path = dir.path().join("legacy.bin");
+            std::fs::write(&path, &content).unwrap();
+            let mut file = File::open(&path).unwrap();
+            let from_file = detect_or_validate_file(&path, &mut file, None, MimeDetectionPolicy::ContentOnly)
+                .unwrap_or_else(|error| panic!("path API failed to detect {clsid}: {error}"));
+            assert_eq!(from_file, expected_mime, "path API mismatch for {clsid}");
+
+            assert_eq!(
+                from_bytes, from_file,
+                "bytes and path APIs must agree on identical content for {clsid}"
+            );
+        }
     }
 
     #[test]

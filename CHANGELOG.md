@@ -25,6 +25,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- PDF outline (bookmark) named destinations now resolve when the `/Names` -> `/Dests` name-tree
+  key is UTF-16BE-with-BOM, the form Adobe Distiller writes. The lookup previously decoded the
+  `/Dest` byte string with a lossy UTF-8 conversion before searching the tree; a name-tree key is a
+  byte string compared by byte (ISO 32000-1 §7.9.6), not text, so the BOM was mangled into
+  replacement characters and every such destination silently resolved to `None`, leaving the
+  bookmark's `dest` as an unresolved `Destination::Named` with no page (GH#1589).
+- `MimeDetectionPolicy::ContentOnly` no longer rejects a legacy OLE2 Office document (.doc/.xls/.ppt)
+  passed by path when the same bytes are accepted through the bytes API. Path-based content
+  detection only sniffs the first 4 KB of a file, but an MS-CFB compound document cannot be typed
+  from a prefix — identifying it means following the FAT sector chain to the root directory entry,
+  which a truncated buffer cannot do. Detection now falls back to a structure-aware read of the
+  file for a compound-file header that a 4 KB prefix left inconclusive, the same escape hatch a
+  ZIP-based Office document already had for the same class of failure (GH#1590).
+
 - PDF table detection no longer invents a column boundary from a rule that stops short of the row
   band. `BAND_RULE_SPAN_TOL` was defined as `SNAP_TOL`, conflating two different questions:
   `SNAP_TOL` decides whether two coordinates *are the same coordinate*, while this one decides

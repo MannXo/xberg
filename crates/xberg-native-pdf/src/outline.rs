@@ -196,12 +196,26 @@ impl PdfDocument {
     /// # Ok::<(), xberg_native_pdf::error::Error>(())
     /// ```
     pub fn resolve_named_destination(&self, name: &str) -> Result<Option<usize>> {
+        self.resolve_named_destination_bytes(name.as_bytes())
+    }
+
+    /// Byte-based counterpart of [`resolve_named_destination`]. A
+    /// `/Dest` name-tree key is a byte string ordered and compared *by
+    /// byte* (ISO 32000-1 §7.9.6) — it is not a text string. A caller
+    /// that already holds the raw key bytes (e.g. from an
+    /// `Object::String`, which may be UTF-16BE-with-BOM — what Adobe
+    /// Distiller emits) must look up with those bytes directly rather
+    /// than decoding to `&str` first: for a byte sequence that is not
+    /// valid UTF-8, `resolve_named_destination`'s lossy decode-then-
+    /// re-encode mangles the key (e.g. the `FE FF` BOM becomes two
+    /// U+FFFD replacement characters) and the lookup can never match. ~keep
+    fn resolve_named_destination_bytes(&self, name: &[u8]) -> Result<Option<usize>> {
         let catalog = self.catalog()?;
         let Some(cat) = catalog.as_dict() else {
             return Ok(None);
         };
         let resolve = |r: crate::object::ObjectRef| self.load_object(r).ok();
-        let Some(dest) = lookup_named_dest(cat, name.as_bytes(), &resolve, 0) else {
+        let Some(dest) = lookup_named_dest(cat, name, &resolve, 0) else {
             return Ok(None);
         };
         // The found value is a dest array (or was already normalised
@@ -219,14 +233,15 @@ impl PdfDocument {
             // name object (`/Dest /name`). Resolve via the catalog
             // /Dests dict / /Names name tree; fall back to the
             // unresolved name for backward compatibility (the
-            // `bookmarks` JSON still prints names when unresolvable). ~keep
-            Object::String(name) => {
-                let s = String::from_utf8_lossy(name).to_string();
-                match self.resolve_named_destination(&s)? {
-                    Some(idx) => Ok(Some(Destination::PageIndex(idx))),
-                    None => Ok(Some(Destination::Named(s))),
-                }
-            }
+            // `bookmarks` JSON still prints names when unresolvable).
+            // The name-tree key is looked up by its RAW bytes — it is
+            // not a text string (ISO 32000-1 §7.9.6) — so a UTF-16BE-
+            // with-BOM key (Adobe Distiller's default) still resolves;
+            // only the *display* fallback goes through a lossy decode. ~keep
+            Object::String(name) => match self.resolve_named_destination_bytes(name)? {
+                Some(idx) => Ok(Some(Destination::PageIndex(idx))),
+                None => Ok(Some(Destination::Named(String::from_utf8_lossy(name).to_string()))),
+            },
             Object::Name(name) => match self.resolve_named_destination(name)? {
                 Some(idx) => Ok(Some(Destination::PageIndex(idx))),
                 None => Ok(Some(Destination::Named(name.clone()))),
@@ -551,5 +566,45 @@ mod tests {
     fn no_dests_no_names_is_none() {
         let cat = HashMap::from([("Type".to_string(), Object::Name("Catalog".to_string()))]);
         assert!(lookup_named_dest(&cat, b"anything", &no_resolve(), 0).is_none());
+    }
+
+    /// GH #1589 root cause: a name-tree key is a byte string ordered
+    /// and compared *by byte* (ISO 32000-1 §7.9.6), not a text
+    /// string. A UTF-16BE-with-BOM key (what Adobe Distiller emits)
+    /// resolves fine when looked up by its raw bytes — `lookup_named_dest`
+    /// / `walk_name_tree` were never at fault — but the OLD
+    /// `resolve_destination` decoded the `/Dest` byte string lossily to
+    /// a `String` *before* calling into the lookup, then re-encoded
+    /// that `String` back to bytes for the search. For a BOM-prefixed
+    /// UTF-16BE key that round trip mangles `FE FF` into two U+FFFD
+    /// replacement characters (`EF BF BD` each in UTF-8) and the
+    /// lookup can never match — every named destination in such a
+    /// document silently resolved to `None`. ~keep
+    #[test]
+    fn utf16be_key_requires_raw_byte_lookup_not_lossy_roundtrip() {
+        // UTF-16BE-with-BOM encoding of the two-character name "A3".
+        let utf16_key: &[u8] = &[0xFE, 0xFF, 0x00, 0x41, 0x00, 0x33];
+        let dests_root = Object::Dictionary(HashMap::from([(
+            "Names".to_string(),
+            Object::Array(vec![Object::String(utf16_key.to_vec()), arr_dest(3)]),
+        )]));
+        let names = Object::Dictionary(HashMap::from([("Dests".to_string(), dests_root)]));
+        let cat = HashMap::from([("Names".to_string(), names)]);
+        let r = no_resolve();
+
+        // Correct: raw bytes find the entry (proves walk_name_tree /
+        // lookup_named_dest are byte-correct, as the reporter claimed).
+        let found = lookup_named_dest(&cat, utf16_key, &r, 0).expect("raw bytes must resolve");
+        assert_eq!(found.as_array().unwrap()[0].as_reference().unwrap().id, 3);
+
+        // What the pre-fix `resolve_destination` effectively looked up:
+        // the name-tree key round-tripped through a lossy UTF-8 decode.
+        let lossy_roundtrip = String::from_utf8_lossy(utf16_key).to_string().into_bytes();
+        assert_eq!(
+            lossy_roundtrip,
+            vec![0xEF, 0xBF, 0xBD, 0xEF, 0xBF, 0xBD, 0x00, 0x41, 0x00, 0x33],
+            "sanity: the lossy round-trip must mangle the BOM exactly as reported"
+        );
+        assert!(lookup_named_dest(&cat, &lossy_roundtrip, &r, 0).is_none());
     }
 }

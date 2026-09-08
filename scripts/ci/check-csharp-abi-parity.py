@@ -25,10 +25,14 @@ function rendered by the wrong template -- which is every part of GH#1595.
 ## Width classes, not exact spellings
 
 `uintptr_t` and `UIntPtr` are both pointer-width and agree; comparing spellings would
-report them and train readers to ignore output. Types this script cannot classify on
-either side are skipped rather than guessed, so an unclassifiable pair is never a failure.
-That is a deliberate soft edge: this check exists to catch the loud shapes (arity, pointer
-vs scalar, 32 vs 64), and a check that guesses would be silenced within a week.
+report them and train readers to ignore output.
+
+A type this script CANNOT read fails the check rather than being skipped. "I could not
+read this" and "these agree" must never produce the same result. The original version
+skipped, and that single choice hid two real defects at once: `XBERGAlefHandle` was
+unreadable, so almost no parameter was compared while the run reported a clean pass over
+282 declarations; and `void` was unreadable, so five `int32_t` returns declared `void` in
+C# (GH#1596) compared as agreeing. Skipping is how a check becomes decorative.
 
 Pointer-width is treated as interchangeable with a fixed 64 bits, which is what makes a
 `uintptr_t` return declared as C# `ulong` (seven of them today) legitimate rather than a
@@ -67,8 +71,14 @@ _ARCH_32 = frozenset({"x86", "arm"})
 # alef-generated, so the repair belongs in alef's C# backend and a hand-patch here would be
 # reverted by the next regen. Each entry must name its issue. Remove an entry when the
 # upstream fix lands -- the check then proves the fix rather than merely asserting it. ~keep
+_DISCARDED_VALIDATE_RESULT = "GH#1596 -- int32_t validation result declared void and discarded"
 KNOWN_BROKEN = {
     "xberg_registry_sample_bytes": "GH#1595 -- bytes-returning fn rendered with the string template",
+    "xberg_extraction_config_validate": _DISCARDED_VALIDATE_RESULT,
+    "xberg_heuristics_config_validate": _DISCARDED_VALIDATE_RESULT,
+    "xberg_llm_config_validate": _DISCARDED_VALIDATE_RESULT,
+    "xberg_pdf_config_validate": _DISCARDED_VALIDATE_RESULT,
+    "xberg_redaction_config_validate": _DISCARDED_VALIDATE_RESULT,
 }
 
 _HEADER_FN = re.compile(r"([A-Za-z_][\w]*(?:\s+[A-Za-z_][\w]*)*\s*\**)\s*\b(xberg_\w+)\s*\(([^;]*?)\)\s*;", re.DOTALL)
@@ -78,6 +88,7 @@ _CSHARP_FN = re.compile(
 _ENTRY_POINT = re.compile(r'EntryPoint\s*=\s*"(\w+)"')
 
 POINTER = "ptr"
+VOID = "void"
 _WIDTHS: tuple[tuple[str, object], ...] = (
     ("uint64_t", 64),
     ("int64_t", 64),
@@ -130,8 +141,17 @@ def scalar_typedefs(header_source: str) -> dict[str, str]:
 
 
 def width_class(declaration: str, typedefs: dict[str, str] | None = None) -> object | None:
-    """Classify a parameter or return type by ABI width, or None when unclassifiable."""
+    """Classify a parameter or return type by ABI width, VOID, or None when unreadable.
+
+    None means "this script could not read the type", and callers must treat that as a
+    FAILURE rather than skipping the pair. "I could not read this" and "these agree" must
+    never produce the same result -- that equivalence is what let a skipped
+    `XBERGAlefHandle` hide every handle parameter from comparison. `void` is a real
+    classification, not an unreadable one, so it is returned explicitly. ~keep
+    """
     text = declaration.replace("const", "").strip()
+    if text == "void":
+        return VOID
     if "*" in text or "IntPtr" in text or "[]" in text or "string" in text:
         return POINTER
     if typedefs:
@@ -194,18 +214,16 @@ def compare(
     problems = []
     header_width = width_class(header_return, typedefs)
     managed_width = width_class(managed_return, typedefs)
-    if (
-        header_width is not None
-        and managed_width is not None
-        and not widths_agree(header_width, managed_width, pointer_is_64)
-    ):
+    if header_width is None or managed_width is None:
+        problems.append(f"{name}: return -- unreadable type, header `{header_return}` vs C# `{managed_return}`")
+    elif not widths_agree(header_width, managed_width, pointer_is_64):
         problems.append(f"{name}: return -- header `{header_return}` vs C# `{managed_return}`")
     for index, (native, csharp) in enumerate(zip(header_params, managed_params, strict=True)):
         native_width = width_class(native, typedefs)
         csharp_width = width_class(csharp, typedefs)
         if native_width is None or csharp_width is None:
-            continue
-        if not widths_agree(native_width, csharp_width, pointer_is_64):
+            problems.append(f"{name}: parameter {index} -- unreadable type, header `{native}` vs C# `{csharp}`")
+        elif not widths_agree(native_width, csharp_width, pointer_is_64):
             problems.append(f"{name}: parameter {index} -- header `{native}` vs C# `{csharp}`")
     return problems
 

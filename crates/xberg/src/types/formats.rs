@@ -445,7 +445,11 @@ pub struct TesseractConfig {
     #[serde(deserialize_with = "deserialize_languages")]
     pub language: Vec<String>,
 
-    /// Page Segmentation Mode (0-13).
+    /// Page Segmentation Mode (1-13).
+    ///
+    /// PSM 0 is rejected: Tesseract's `PSM_OSD_ONLY` performs orientation and script
+    /// detection with no character recognition, so it cannot satisfy a text-extraction
+    /// request and previously yielded an empty document (GH#1586).
     ///
     /// `None` (the default) means the caller made no explicit choice: the extraction
     /// pipeline applies its own context-appropriate PSM (whole-image PSM 11, vertical-

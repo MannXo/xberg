@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Tesseract `psm = 0` is now rejected at configuration validation. PSM 0 is Tesseract's
+  `PSM_OSD_ONLY` — orientation and script detection with no character recognition — so it cannot
+  satisfy a text-extraction request, and Tesseract emits no hOCR for it at all. Setting it
+  previously succeeded while returning either a zero-length document or degraded, partially
+  dropped text, depending on the Tesseract build, in both cases with no warning and at several
+  times the cost of a normal run. The error now names the mode and points at 3 (auto), 6 (single
+  block), and 11 (sparse text). Valid values are 1-13; omitting `psm` continues to let the
+  pipeline choose (GH#1586).
+
 ## [1.1.2] - 2026-09-07
 
 > **This release contains a breaking public API change.** `TesseractConfig.psm` is now optional.

@@ -212,9 +212,24 @@ mod tests {
 
     #[test]
     fn test_validate_tesseract_psm_valid() {
-        for psm in 0..=13 {
+        for psm in 1..=13 {
             assert!(validate_tesseract_psm(psm).is_ok(), "PSM {} should be valid", psm);
         }
+    }
+
+    #[test]
+    fn should_reject_tesseract_psm_zero_because_osd_only_recognises_no_text() {
+        let error = validate_tesseract_psm(0).expect_err("PSM 0 is OSD-only and recognises no text");
+        let message = error.to_string();
+        assert!(
+            message.contains('0'),
+            "message should name the rejected value: {message}"
+        );
+        assert!(
+            message.contains("orientation"),
+            "message should say why PSM 0 cannot work: {message}"
+        );
+        assert!(message.contains('3'), "message should point at a usable PSM: {message}");
     }
 
     #[test]

@@ -1357,11 +1357,35 @@ mod tests {
 
         let message = config
             .validate()
-            .expect_err("psm 14 is out of the 0-13 range")
+            .expect_err("psm 14 is out of the 1-13 range")
             .to_string();
         assert!(
             message.contains("PSM"),
             "error should name the PSM field; got: {message}"
+        );
+    }
+
+    /// GH#1586: PSM 0 is `PSM_OSD_ONLY`, so Tesseract recognises no characters and the
+    /// extraction completed successfully with an empty document. Rejecting it here is the
+    /// only place a caller finds out before losing the content. ~keep
+    #[test]
+    fn should_reject_ocr_config_when_tesseract_psm_is_osd_only() {
+        let config = OcrConfig {
+            tesseract_config: Some(tesseract_config_with(0, 1)),
+            ..Default::default()
+        };
+
+        let message = config
+            .validate()
+            .expect_err("psm 0 recognises no text and must not be accepted")
+            .to_string();
+        assert!(
+            message.contains("PSM 0") || message.contains("PSM value '0'"),
+            "error should name PSM 0 specifically; got: {message}"
+        );
+        assert!(
+            message.contains("orientation"),
+            "error should explain that PSM 0 is orientation detection only; got: {message}"
         );
     }
 

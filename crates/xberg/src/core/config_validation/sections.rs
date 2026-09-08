@@ -210,7 +210,11 @@ const VALID_LANGUAGE_CODES: &[&str] = &[
 ];
 
 /// Valid tesseract PSM (Page Segmentation Mode) values.
-const VALID_TESSERACT_PSM: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+///
+/// 0 is deliberately absent. Tesseract's PSM 0 is `PSM_OSD_ONLY` -- orientation and script
+/// detection with no character recognition at all -- so it cannot serve a text-extraction
+/// request. Accepting it produced an empty document with a success exit code (GH#1586). ~keep
+const VALID_TESSERACT_PSM: &[i32] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 /// Valid tesseract OEM (OCR Engine Mode) values.
 const VALID_TESSERACT_OEM: &[i32] = &[0, 1, 2, 3];
@@ -410,7 +414,7 @@ pub(crate) fn validate_language_code(code: &str) -> Result<()> {
 ///
 /// # Arguments
 ///
-/// * `psm` - The PSM value to validate (0-13)
+/// * `psm` - The PSM value to validate (1-13; 0 is OSD-only and is rejected)
 ///
 /// # Returns
 ///
@@ -426,20 +430,25 @@ pub(crate) fn validate_language_code(code: &str) -> Result<()> {
 /// assert!(validate_tesseract_psm(3).is_ok());  // Fully automatic
 /// assert!(validate_tesseract_psm(6).is_ok());  // Single block of text
 /// assert!(validate_tesseract_psm(14).is_err()); // Out of range
+/// assert!(validate_tesseract_psm(0).is_err());  // OSD-only: recognises no text
 /// ```
 pub(crate) fn validate_tesseract_psm(psm: i32) -> Result<()> {
     if VALID_TESSERACT_PSM.contains(&psm) {
-        Ok(())
-    } else {
-        Err(XbergError::Validation {
-            message: format!(
-                "Invalid tesseract PSM value '{}'. Valid range is 0-13. \
-                 Common values: 3 (auto), 6 (single block), 11 (sparse text).",
-                psm
-            ),
-            source: None,
-        })
+        return Ok(());
     }
+    let message = if psm == 0 {
+        "Invalid tesseract PSM value '0'. PSM 0 is orientation and script detection (OSD) only: \
+         it performs no character recognition, so extraction returns no text. \
+         Use 3 (auto), 6 (single block), or 11 (sparse text); omit `psm` to let the pipeline choose."
+            .to_string()
+    } else {
+        format!(
+            "Invalid tesseract PSM value '{}'. Valid range is 1-13. \
+             Common values: 3 (auto), 6 (single block), 11 (sparse text).",
+            psm
+        )
+    };
+    Err(XbergError::Validation { message, source: None })
 }
 
 /// Validate a tesseract OCR Engine Mode (OEM).

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-09-08
+
 ### Added
 
 - `Table.cell_styles` and `GridCell.heading_level` / `GridCell.style_name` expose the paragraph

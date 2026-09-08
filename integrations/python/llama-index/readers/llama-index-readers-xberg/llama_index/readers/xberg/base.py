@@ -8,7 +8,7 @@ element-aware output for the companion ``XbergNodeParser``.
 import asyncio
 import logging
 from collections.abc import AsyncIterator, Iterable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
@@ -25,6 +25,7 @@ from pydantic import Field, field_validator
 from xberg import (
     ExtractedDocument,
     ExtractInput,
+    ExtractionConfig,
     ExtractionResult,
     extract,
     extract_batch,
@@ -84,7 +85,7 @@ class XbergReader(BasePydanticReader):
     )
     extraction_config: dict[str, Any] | None = Field(
         default=None,
-        description="xberg ExtractionConfig (a TypedDict / plain dict) controlling output format, "
+        description="xberg ExtractionConfig (a dataclass) or a plain dict controlling output format, "
         "OCR, image extraction, result format, and all other extraction options.",
     )
 
@@ -100,6 +101,8 @@ class XbergReader(BasePydanticReader):
             return None
         if isinstance(v, dict):
             return dict(v)
+        if isinstance(v, ExtractionConfig):
+            return asdict(v)
         msg = f"Expected ExtractionConfig, dict, or None, got {type(v)}"
         raise ValueError(msg)
 

@@ -81,6 +81,25 @@ importers:
       '@types/node':
         specifier: ^26.0.0
         version: 26.1.1
+    optionalDependencies:
+      '@xberg-io/xberg-darwin-arm64':
+        specifier: 1.1.2
+        version: 1.1.2
+      '@xberg-io/xberg-linux-arm64-gnu':
+        specifier: 1.1.2
+        version: 1.1.2
+      '@xberg-io/xberg-linux-arm64-musl':
+        specifier: 1.1.2
+        version: 1.1.2
+      '@xberg-io/xberg-linux-x64-gnu':
+        specifier: 1.1.2
+        version: 1.1.2
+      '@xberg-io/xberg-linux-x64-musl':
+        specifier: 1.1.2
+        version: 1.1.2
+      '@xberg-io/xberg-win32-x64-msvc':
+        specifier: 1.1.2
+        version: 1.1.2
 
   crates/xberg-wasm:
     devDependencies:
@@ -1252,6 +1271,46 @@ packages:
 
   '@vitest/utils@4.1.11':
     resolution: {integrity: sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==}
+
+  '@xberg-io/xberg-darwin-arm64@1.1.2':
+    resolution: {integrity: sha512-ghM6YEonjODUC9yXMkt381S7oNmk6F5CSN/3tGJgKMuMgFe2p184IAewfdW8EkYwscPng/9+9wixM37iw1fsmQ==}
+    engines: {node: '>= 22'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@xberg-io/xberg-linux-arm64-gnu@1.1.2':
+    resolution: {integrity: sha512-3D5g0URYIVjQ2R55Jav3avNf8lFLxnXUuGbnha/WQG9ArAR6wOYYm4oz9OdRORuun0cqxmMeDE/75GeawJ+Aeg==}
+    engines: {node: '>= 22'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@xberg-io/xberg-linux-arm64-musl@1.1.2':
+    resolution: {integrity: sha512-xGkkUy6CmJH4AbLMAjuN+2gTGbJyV8051lGVXnxRCdSoSG8Rp2/LUNmmxWjYZ7tHCWvvcIPCJm5vR8fkZsYg2A==}
+    engines: {node: '>= 22'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@xberg-io/xberg-linux-x64-gnu@1.1.2':
+    resolution: {integrity: sha512-F85NtkeqOml6HH4MQqFJ/4bIUV2EBrqBroMwHfAqRTMRRMEdJuu1B3AHyjR8VNwG+J6wzJ3j5e39Q9bkoX58ow==}
+    engines: {node: '>= 22'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@xberg-io/xberg-linux-x64-musl@1.1.2':
+    resolution: {integrity: sha512-FqaMEWF65jS4rMckoE3KNzv5JcvdOAP95jj9fdIWqzeXXlC6kAm2lDb8PhIhHqVv4Wlf0KKNvDBB68Xg6srNxg==}
+    engines: {node: '>= 22'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@xberg-io/xberg-win32-x64-msvc@1.1.2':
+    resolution: {integrity: sha512-ZBLoKg/Wsg5k4Infh0SeDUyvbgWWWcxaRYcvHZ5k8ZlJ/+4Yce/zBoP9csYhv7J20FCakeT77aNYIQhxpgwZMQ==}
+    engines: {node: '>= 22'}
+    cpu: [x64]
+    os: [win32]
 
   adverb-where@0.2.6:
     resolution: {integrity: sha512-uVazUDEPYpBSVRjEDTzO6hVXh9X/eQb+gobzDpqdzMiM1MkfGxfPtgN8YerBjAeDkoABZprsOwhSZnY4X3knnw==}
@@ -3325,6 +3384,24 @@ snapshots:
       '@vitest/pretty-format': 4.1.11
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.1
+
+  '@xberg-io/xberg-darwin-arm64@1.1.2':
+    optional: true
+
+  '@xberg-io/xberg-linux-arm64-gnu@1.1.2':
+    optional: true
+
+  '@xberg-io/xberg-linux-arm64-musl@1.1.2':
+    optional: true
+
+  '@xberg-io/xberg-linux-x64-gnu@1.1.2':
+    optional: true
+
+  '@xberg-io/xberg-linux-x64-musl@1.1.2':
+    optional: true
+
+  '@xberg-io/xberg-win32-x64-msvc@1.1.2':
+    optional: true
 
   adverb-where@0.2.6: {}
 

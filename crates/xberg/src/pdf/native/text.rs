@@ -917,6 +917,22 @@ const LINE_Y_TOLERANCE_PTS: f32 = 0.5;
 // same density bar `MIN_DENSE_COLUMN_SPANS_PER_SIDE` applies to a column's
 // population, to the evidence for the gutter's existence.
 const MIN_DENSE_COLUMN_SPLIT_LINES: usize = MIN_DENSE_COLUMN_SPANS_PER_SIDE;
+// GH#1603: a single outlier line (one long justified line, one stray word) can close
+// the true gutter as a page-wide corridor while a same-shaped-but-irrelevant corridor
+// sits elsewhere on the page -- on a hanging-number/list-label layout, that corridor
+// is the number-to-text indent, present on *every* line, so it always wins
+// `redirect_split_out_of_content`'s `max_by(width)` once the real gutter is narrower
+// than `min_gutter` or closed by that one outlier. Bounding how far the widest
+// corridor may move the split distinguishes a legitimate relocation from an
+// illegitimate one without having to characterise the corridor's shape at all.
+// Measured: GH#1545's misdetected table/prose median moves 61.6pt to the real
+// table/prose gutter; the reporter's corpus records genuine `detect_split_x` misses
+// relocated by up to 92.7pt (30.9pt and 38.3pt elsewhere in the same corpus). GH#1603
+// itself relocates the split 230pt, straight into a clause's own hanging-number
+// indent. 25% of page width (149pt on A4) sits with ~57pt of headroom above the
+// largest legitimate move measured and ~80pt of margin below the smallest
+// illegitimate one. ~keep
+const MAX_REDIRECT_DISTANCE_FRACTION: f32 = 0.25;
 // GH#1545: two regions with different leading (a table on 8.05pt beside prose on
 // 10.45pt) are never grouped into a shared line by `group_into_lines`, so per-line
 // gutter evidence only ever sees each region's *internal* gaps and the median lands
@@ -1089,6 +1105,14 @@ fn detect_split_x(spans: &[xberg_native_pdf::layout::TextSpan], lines: &[SpanLin
 /// spans and snapping already resolves it, so this pass sees a clean split and
 /// leaves it alone. Only a split that survives snapping still cutting a word is
 /// redirected here.
+///
+/// GH#1603: the widest corridor is not always the right one. On a hanging-number
+/// page the number-to-text indent is present on every line and is wider than a true
+/// gutter narrower than `min_gutter` (or one closed by a single outlier line), so
+/// `max_by` hands back the indent -- moving the split into a clause instead of onto
+/// its gutter. `MAX_REDIRECT_DISTANCE_FRACTION` bounds how far this pass may move the
+/// split from the incoming (detected/snapped) one; a move past that bound falls back
+/// to `split_x` unchanged rather than relocating into unrelated content.
 fn redirect_split_out_of_content(
     spans: &[xberg_native_pdf::layout::TextSpan],
     lines: &[SpanLine],
@@ -1103,10 +1127,18 @@ fn redirect_split_out_of_content(
     }
     let furniture_width = page_width * FULL_WIDTH_FURNITURE_FRACTION;
     let min_gutter = (page_width * MIN_DENSE_COLUMN_GUTTER_FRACTION).max(MIN_DENSE_COLUMN_GUTTER_PTS);
-    page_whitespace_corridors(spans, lines, furniture_width, min_gutter)
+    let Some((left, right)) = page_whitespace_corridors(spans, lines, furniture_width, min_gutter)
         .into_iter()
         .max_by(|a, b| (a.1 - a.0).total_cmp(&(b.1 - b.0)))
-        .map_or(split_x, |(left, right)| (left + right) / 2.0)
+    else {
+        return split_x;
+    };
+    let candidate = (left + right) / 2.0;
+    let max_redirect_distance = page_width * MAX_REDIRECT_DISTANCE_FRACTION;
+    if (candidate - split_x).abs() > max_redirect_distance {
+        return split_x;
+    }
+    candidate
 }
 
 /// Every maximal x-interval at least `min_gutter` wide that no non-furniture span
@@ -3403,6 +3435,190 @@ mod tests {
             last_panel_a < first_panel_b,
             "panel A must be emitted whole before panel B, but panel A's last span sits at \
              {last_panel_a} and panel B's first at {first_panel_b}"
+        );
+    }
+
+    // GH#1603: on a two-column page with hanging clause numbers, a corridor formed
+    // by the number-to-text indent is present on EVERY line, while the true gutter
+    // between columns can be closed by a single justified line whose text pokes past
+    // it. `page_whitespace_corridors` then offers only the indent to `max_by`, and
+    // `redirect_split_out_of_content` relocates the split from the real gutter into
+    // the middle of a column -- separating every clause number from its own text.
+    const GH1603_PAGE_WIDTH: f32 = 595.32;
+    // The true gutter's per-line median, and the indent it must not be replaced by.
+    const GH1603_TRUE_GUTTER_SPLIT_X: f32 = 293.92;
+    const GH1603_LEFT_INDENT_MID_X: f32 = 63.84;
+
+    /// A4-width, two-column, hanging-clause-number page whose real gutter (~10pt,
+    /// between x=283.84/295.84 and x=304.0) is narrower than `min_gutter` (11.9pt),
+    /// while the number-to-text indent on each side (~20pt / ~15pt) comfortably
+    /// clears it. Row 3's left clause line is deliberately long enough (222pt) to
+    /// straddle the true gutter's per-line median, forcing `redirect_split_out_of_content`
+    /// to fire; every other row is a plain-width control so the true gutter still wins
+    /// `detect_split_x`'s per-line vote.
+    ///
+    /// Left and right columns are baseline-offset by 1.32pt (rows 4-11) so their lines
+    /// never group across the gutter -- the same structure the issue's real PDF has --
+    /// except for rows 0-3, which stay aligned so their combined line's widest gap is
+    /// the true gutter itself, giving `detect_split_x` the votes it needs to find it.
+    fn gh1603_narrow_gutter_hanging_number_spans() -> Vec<TextSpan> {
+        let mut spans = Vec::new();
+        // Rows 0-3: left and right columns aligned on the same baseline. Row 3 is the
+        // outlier whose left text (73.84 + 222.0 = 295.84) pokes past the true gutter.
+        for row in 0..4 {
+            let y = 900.0 - row as f32 * 14.0;
+            let left_text_width = if row == 3 { 222.0 } else { 210.0 };
+            spans.push(span_with_width(&format!("{row}.1"), 36.0, y, 17.84, 11.0, 11.0));
+            spans.push(span_with_width(
+                &format!("The left clause line {row} continues with ordinary agreement terms"),
+                73.84,
+                y,
+                left_text_width,
+                11.0,
+                11.0,
+            ));
+            spans.push(span_with_width(&format!("{row}.2"), 304.0, y, 17.84, 11.0, 11.0));
+            spans.push(span_with_width(
+                &format!("The right clause line {row} continues with ordinary agreement terms"),
+                336.84,
+                y,
+                220.0,
+                11.0,
+                11.0,
+            ));
+        }
+        // Rows 4-7: left has its own hanging number; right is a plain continuation
+        // line (no number) on an offset baseline.
+        for row in 4..8 {
+            let y = 900.0 - row as f32 * 14.0;
+            spans.push(span_with_width(&format!("{row}.1"), 36.0, y, 17.84, 11.0, 11.0));
+            spans.push(span_with_width(
+                &format!("The left clause line {row} continues with ordinary agreement terms"),
+                73.84,
+                y,
+                210.0,
+                11.0,
+                11.0,
+            ));
+            spans.push(span_with_width(
+                &format!("The right continuation line {row} follows the previous clause"),
+                336.84,
+                y - 1.32,
+                220.0,
+                11.0,
+                11.0,
+            ));
+        }
+        // Rows 8-11: mirror image -- left is a plain continuation line, right has its
+        // own hanging number.
+        for row in 8..12 {
+            let y = 900.0 - row as f32 * 14.0;
+            spans.push(span_with_width(
+                &format!("The left continuation line {row} follows the previous clause"),
+                73.84,
+                y,
+                210.0,
+                11.0,
+                11.0,
+            ));
+            spans.push(span_with_width(&format!("{row}.2"), 304.0, y - 1.32, 17.84, 11.0, 11.0));
+            spans.push(span_with_width(
+                &format!("The right clause line {row} continues with ordinary agreement terms"),
+                336.84,
+                y - 1.32,
+                220.0,
+                11.0,
+                11.0,
+            ));
+        }
+        spans
+    }
+
+    /// GH#1603: `redirect_split_out_of_content` must not relocate the split into a
+    /// hanging-number indent. `detect_split_x` correctly finds the true (narrow)
+    /// gutter; only row 3's outlier line straddles it, which is enough to trigger the
+    /// redirect. Before the fix, `page_whitespace_corridors` offers only the left
+    /// number-to-text indent (the true gutter is closed by row 3 and falls below
+    /// `min_gutter`), and `max_by` hands it back -- moving the split 230pt into the
+    /// left margin, between every clause number and its own text.
+    #[test]
+    fn redirect_split_out_of_content_must_not_relocate_into_a_hanging_number_indent_gh1603() {
+        let spans = gh1603_narrow_gutter_hanging_number_spans();
+        let order = spans_sorted_top_to_bottom(&spans);
+        let lines = group_into_lines(&spans, &order);
+
+        let detected = detect_split_x(&spans, &lines, GH1603_PAGE_WIDTH).expect("hanging-number page has a gutter");
+        assert!(
+            (detected - GH1603_TRUE_GUTTER_SPLIT_X).abs() < 0.01,
+            "detect_split_x must find the true gutter, got {detected}"
+        );
+
+        let snapped = snap_split_left_of_hanging_labels(&spans, &lines, GH1603_PAGE_WIDTH, detected);
+        assert_eq!(
+            snapped, detected,
+            "no narrow span straddles the true gutter, so the snap must leave it alone"
+        );
+        assert!(
+            spans
+                .iter()
+                .any(|span| span.bbox.left() < snapped && span.bbox.right() > snapped),
+            "row 3's outlier line is expected to still straddle the split ({snapped}); if it no \
+             longer does, this fixture has stopped exercising the redirect"
+        );
+
+        let redirected = redirect_split_out_of_content(&spans, &lines, GH1603_PAGE_WIDTH, snapped);
+        assert!(
+            (redirected - GH1603_LEFT_INDENT_MID_X).abs() > 1.0,
+            "redirect must not relocate the split into the hanging-number indent at \
+             {GH1603_LEFT_INDENT_MID_X}, got {redirected}"
+        );
+        assert_eq!(
+            redirected, snapped,
+            "with both hanging-number indents excluded there is no legitimate replacement \
+             corridor, so the split must fall back to the true gutter, got {redirected}"
+        );
+    }
+
+    /// GH#1603 end-to-end: every clause number must stay immediately followed by its
+    /// own clause text after the reorder, never hoisted ahead of the whole column.
+    #[test]
+    fn dense_two_column_hanging_numbers_survive_narrow_gutter_redirect_gh1603() {
+        let mut spans = gh1603_narrow_gutter_hanging_number_spans();
+        assert!(
+            reorder_dense_two_column_page(&mut spans, GH1603_PAGE_WIDTH),
+            "a hanging-number two-column page must still be reordered"
+        );
+
+        let mut checked = 0;
+        for (index, span) in spans.iter().enumerate() {
+            let Some((row_str, side)) = span.text.split_once('.') else {
+                continue;
+            };
+            if side != "1" && side != "2" {
+                continue;
+            }
+            let Ok(row) = row_str.parse::<usize>() else {
+                continue;
+            };
+            let expected_prefix = if side == "1" {
+                format!("The left clause line {row}")
+            } else {
+                format!("The right clause line {row}")
+            };
+            let next = spans.get(index + 1).map(|s| s.text.as_str()).unwrap_or("");
+            assert!(
+                next.starts_with(&expected_prefix),
+                "clause number {:?} at position {index} must be immediately followed by its own \
+                 clause text, found {next:?} -- numbers must never be hoisted ahead of their clauses",
+                span.text
+            );
+            checked += 1;
+        }
+        // Rows 0-3 each carry both a left and right number (8), rows 4-7 carry only a
+        // left number (4), and rows 8-11 carry only a right number (4).
+        assert_eq!(
+            checked, 16,
+            "all 16 clause numbers in the fixture must have been checked"
         );
     }
 }

@@ -202,6 +202,27 @@ where
     tracing::debug!(stage, timestamp = format!("{timestamp:.3}"), "{}", details());
 }
 
+/// Word-count shortfall a markdown table rebuild is allowed relative to the content it would
+/// replace before the rebuild is rejected as content loss (GH#1599). Zero: table syntax (`|`,
+/// `---`) itself adds whitespace-separated tokens, so a rebuild that faithfully reformats
+/// existing prose into a table is never word-count-negative -- only a rebuild that actually
+/// dropped page content comes in under the original count.
+const TABLE_REBUILD_MIN_WORD_RETENTION: usize = 0;
+
+/// Whether a markdown table rebuild should replace `original_content`.
+///
+/// `build_content_with_inline_tables` reconstructs page content from a crude y-position
+/// clustering heuristic that is far less robust than the hOCR-derived content it replaces.
+/// Non-emptiness alone (the previous guard) cannot distinguish a legitimate rebuild from one
+/// that silently dropped most of the page -- see GH#1599, where OCR markdown output lost a
+/// large amount of content that plain output retained. Comparing absolute word counts catches
+/// that: a rebuild is adopted only when it does not lose material.
+fn should_adopt_table_rebuild(original_content: &str, rebuilt_content: &str) -> bool {
+    let original_word_count = original_content.split_whitespace().count();
+    let rebuilt_word_count = rebuilt_content.split_whitespace().count();
+    rebuilt_word_count + TABLE_REBUILD_MIN_WORD_RETENTION >= original_word_count
+}
+
 /// Build content with OCR tables inlined at their correct vertical positions.
 ///
 /// Parses TSV word positions to separate table words from non-table words,
@@ -1847,11 +1868,20 @@ pub(super) fn perform_ocr(
     {
         let rebuilt = build_content_with_inline_tables(tsv_data, &tables, config.table_min_confidence);
         if !rebuilt.is_empty() {
-            content = rebuilt;
-            metadata.insert(
-                "pre_formatted".to_string(),
-                serde_json::Value::String("markdown".to_string()),
-            );
+            if should_adopt_table_rebuild(&content, &rebuilt) {
+                content = rebuilt;
+                metadata.insert(
+                    "pre_formatted".to_string(),
+                    serde_json::Value::String("markdown".to_string()),
+                );
+            } else {
+                tracing::warn!(
+                    target: "xberg::ocr::tables",
+                    original_word_count = content.split_whitespace().count(),
+                    rebuilt_word_count = rebuilt.split_whitespace().count(),
+                    "OCR markdown table rebuild dropped content relative to the original; keeping original content"
+                );
+            }
         }
     }
 
@@ -2128,6 +2158,29 @@ mod tests {
             font_attrs: None,
             language: None,
         }
+    }
+
+    #[test]
+    fn should_reject_table_rebuild_that_drops_words_relative_to_original() {
+        let original = "Site inspections this quarter covered fourteen locations across \
+            the northern basin and several access roads remain washed out following spring runoff";
+        let rebuilt = "| Site | inspections |";
+
+        assert!(
+            !should_adopt_table_rebuild(original, rebuilt),
+            "a rebuild with far fewer words than the original must not replace it"
+        );
+    }
+
+    #[test]
+    fn should_adopt_table_rebuild_that_retains_or_exceeds_original_word_count() {
+        let original = "Name Age\nAlice 30\nBob 40";
+        let rebuilt = "| Name | Age |\n| --- | --- |\n| Alice | 30 |\n| Bob | 40 |";
+
+        assert!(
+            should_adopt_table_rebuild(original, rebuilt),
+            "a rebuild that faithfully reformats the same content into a table must still be adopted"
+        );
     }
 
     #[test]

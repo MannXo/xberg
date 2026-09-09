@@ -179,6 +179,37 @@ fn test_issue_421_financial_table_markdown() {
     }
 }
 
+/// GH#1599 regression: the markdown table rebuild must never lose page content relative to
+/// what plain output retains for the same page. Plain output never enters the table-inlining
+/// path (`build_content_with_inline_tables` in `ocr/processor/execution.rs`), so its word count
+/// is the pre-rebuild baseline; a markdown rebuild that drops below it is content loss, not a
+/// formatting difference.
+#[test]
+fn test_ocr_markdown_word_count_never_drops_below_plain_when_tables_found() {
+    if skip_if_missing("images/simple_table.png") {
+        return;
+    }
+
+    let file_path = get_test_file_path("images/simple_table.png");
+
+    let plain_result =
+        extract_uri_document_blocking(&file_path, None, &ocr_plain_config()).expect("Should extract with plain output");
+    let md_result = extract_uri_document_blocking(&file_path, None, &ocr_markdown_config())
+        .expect("Should extract with markdown output");
+
+    if !md_result.tables.is_empty() {
+        let plain_words = plain_result.content.split_whitespace().count();
+        let md_words = md_result.content.split_whitespace().count();
+        assert!(
+            md_words >= plain_words,
+            "Markdown word count ({md_words}) dropped below plain's ({plain_words}) when tables were detected.\n\
+             Plain content:\n{}\n\nMarkdown content:\n{}",
+            plain_result.content,
+            md_result.content
+        );
+    }
+}
+
 /// Test the metadata.output_format signal for pre-formatted content.
 /// When OCR inlines tables, the output_format metadata should be set to "markdown"
 /// so the pipeline doesn't re-process it.

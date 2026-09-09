@@ -83,14 +83,32 @@ pub(super) fn merge_continuation_paragraphs(paragraphs: &mut Vec<PdfParagraph>) 
         // with the answer: the page that must merge differs by 58.7pt while the page
         // that must split differs by 28.5pt, so no tolerance separates them.
         //
-        // A lowercase opening is the signal that actually tracks a wrap: a heading
-        // continuing mid-phrase resumes in lowercase, while unrelated text following a
-        // heading starts capitalised. `continuation_signal` above already treats it as
-        // a continuation cue, so accepting it here is consistent rather than novel.
-        // Kept as an OR beside the geometric test, never a replacement -- widening the
-        // exemption can only merge more, so it cannot regress a pair that merges today
-        // (GH#1467's right-edge case included). ~keep
-        let heading_wrap_exempt = boundary_is_heading_wrap || starts_with_lowercase_continuation(&next);
+        // A lowercase opening tracks a wrap -- a heading continuing mid-phrase resumes
+        // in lowercase -- but it is NOT sufficient on its own, and shipping it alone
+        // was a mistake: body prose beginning lowercase under a COMPLETE numbered
+        // heading has the same signature, and GH#1609's reproducer welded on both of
+        // its pages, control included. "Widening can only merge more" was true and was
+        // the wrong safety argument, because merging more is precisely that regression.
+        //
+        // The second conjunct is the half `heading_wraps_onto`'s doc comment always
+        // claimed and never measured: a wrapping heading FILLS its column before
+        // continuing below. That is a property of the heading's own line, measured
+        // against the width of what would be merged onto it -- not of the continuation,
+        // whose right edge is arbitrary. See [`super::pipeline::heading_fills_column`]. ~keep
+        let next_right_edge = next
+            .lines
+            .iter()
+            .filter_map(|line| line.segments.last())
+            .map(|segment| segment.upright_advance_extent().1)
+            .filter(|edge| edge.is_finite())
+            .fold(f32::NEG_INFINITY, f32::max);
+        let heading_fills_column = current
+            .lines
+            .last()
+            .and_then(|line| line.segments.last())
+            .is_some_and(|prev_segment| super::pipeline::heading_fills_column(prev_segment, next_right_edge));
+        let heading_wrap_exempt =
+            boundary_is_heading_wrap || (starts_with_lowercase_continuation(&next) && heading_fills_column);
         let should_merge = both_body
             && fonts_compatible
             && bold_compatible
@@ -714,6 +732,30 @@ mod tests {
             paragraphs.len(),
             2,
             "GH#1605 negative control: unrelated capitalised text after a heading must NOT be absorbed"
+        );
+    }
+
+    /// GH#1609: body prose beginning lowercase under a COMPLETE numbered heading
+    /// carries the same lowercase signature as a wrap, and the first version of the
+    /// GH#1605 fix merged it -- on the reporter's control page as well as the
+    /// defective one. The heading's own line separates the two cases: a wrap fills
+    /// its column, and this heading stops far short of the body's width.
+    #[test]
+    fn numbered_heading_followed_by_wider_lowercase_body_still_splits() {
+        let mut paragraphs = vec![
+            wrapped_heading_paragraph("3.1.7 Innovatie/ontwikkelingen", 104.42, 230.0, 700.0),
+            wrapped_heading_paragraph(
+                "innovatie ontwikkelingen toekomstige verwachten gebied",
+                104.42,
+                500.0,
+                688.0,
+            ),
+        ];
+        merge_continuation_paragraphs(&mut paragraphs);
+        assert_eq!(
+            paragraphs.len(),
+            2,
+            "a complete heading must not absorb wider body prose merely because it opens lowercase"
         );
     }
 }

@@ -33,7 +33,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PDF paragraph grouping no longer splits a numbered heading that wraps onto a shorter second line.
   The wrap exemption compared the two lines' right edges, but a heading fills its column on its
   FIRST line and the continuation is whatever is left over, so the metric was anti-correlated with
-  the answer. A lowercase opening now also exempts the pair (GH#1605).
+  the answer. The pair is now also exempt when the continuation opens lowercase AND the heading
+  line reaches within a tolerance of the width of what would be merged onto it — the "fills its
+  column" half the original rule stated but never measured. The lowercase test alone is not
+  sufficient: body prose beginning lowercase under a complete numbered heading has the same
+  signature (GH#1605).
+- PDF paragraph grouping now recognises a numbered heading whose line arrives as more than one text
+  span. The break terms tested the predicate against a single span, so a heading set with a hanging
+  section number — `3.1.7` in one span, its title in the next, on one baseline — never looked like a
+  numbered heading and was left to the ordinary paragraph-gap rule. That rule needs a gap wider than
+  ordinary line pitch, so every such heading whose body starts on the next line was welded into it.
+  The line's spans are now re-joined before the predicate runs, which is what the continuation-merge
+  pass already did (GH#1609).
 - PDF paragraph grouping now recognises a heading whose number is not its first token — `ARTIKEL 1.`,
   `Chapter 1`, `Appendix 1`, `Annex III`, `Exhibit A`. The numbered-heading predicate is the only
   boundary signal available when a heading shares font, size, weight and leading with its

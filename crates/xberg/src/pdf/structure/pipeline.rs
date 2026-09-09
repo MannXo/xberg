@@ -1901,6 +1901,46 @@ fn paragraph_gap_axis(segment: &SegmentData) -> f32 {
 ///
 /// Groups consecutive segments by font changes, bold changes, list markers, and
 /// paragraph gap positions. Each group is then classified via `finalize_paragraph`.
+/// The text of the whole visual line each segment belongs to, indexed alongside
+/// `lines`.
+///
+/// The numbered-heading break terms test a predicate against a line's opening
+/// token, but this loop walks SEGMENTS, and a heading set with a hanging number
+/// arrives as two of them on one baseline -- `"3.1.7"` and
+/// `"Innovatie/ontwikkelingen"`. Neither segment alone starts with a section
+/// number the way the assembled line does, so the terms never fired and the
+/// heading was left to the ordinary paragraph-gap rule, which needs a gap wider
+/// than ordinary line pitch. `merge_continuation_paragraphs::starts_numbered_section`
+/// already re-joins a paragraph's first line for exactly this reason; this is the
+/// same re-join on the grouper side, so the two passes agree. See #1609. ~keep
+fn visual_line_texts(lines: &[SegmentData]) -> Vec<String> {
+    let mut texts = vec![String::new(); lines.len()];
+    let mut start = 0usize;
+    while start < lines.len() {
+        let mut end = start + 1;
+        // Same-visual-line test as `starts_new_line` below: consecutive, so the two
+        // cannot disagree about where a line ends. ~keep
+        while end < lines.len()
+            && lines[end].has_same_rotation(&lines[end - 1])
+            && (lines[end].upright_baseline() - lines[end - 1].upright_baseline()).abs()
+                <= INLINE_STYLE_BASELINE_TOLERANCE
+        {
+            end += 1;
+        }
+        let joined = lines[start..end]
+            .iter()
+            .map(|segment| segment.text.trim())
+            .filter(|text| !text.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+        for slot in &mut texts[start..end] {
+            slot.clone_from(&joined);
+        }
+        start = end;
+    }
+    texts
+}
+
 fn blocks_to_paragraphs(
     lines: Vec<SegmentData>,
     heading_map: &[(f32, Option<u8>)],
@@ -1911,10 +1951,12 @@ fn blocks_to_paragraphs(
     }
 
     let gap_info = super::classify::precompute_gap_info(heading_map);
+    let visual_line_texts = visual_line_texts(&lines);
 
     let mut paragraphs: Vec<PdfParagraph> = Vec::new();
     let mut current_lines: Vec<&SegmentData> = Vec::new();
     let mut current_is_single_visual_line = true;
+    let mut prev_idx = 0usize;
 
     for (line_idx, line) in lines.iter().enumerate() {
         let should_break = if current_lines.is_empty() {
@@ -1955,7 +1997,8 @@ fn blocks_to_paragraphs(
             // (not the looser `starts_with_section_number`) is used deliberately so
             // prose beginning with a bare year — "2024 was een druk jaar" — does not
             // break its paragraph. See #1386. ~keep
-            let starts_section = starts_new_line && super::classify::is_numbered_section_heading(&line.text);
+            let starts_section =
+                starts_new_line && super::classify::is_numbered_section_heading(&visual_line_texts[line_idx]);
             // A numbered section heading also always ENDS the element it opens: without
             // this term nothing else distinguishes a heading from the body text that
             // follows it when both share font size, weight, role and line spacing --
@@ -1970,8 +2013,8 @@ fn blocks_to_paragraphs(
             // its next physical line rather than handing off to unrelated content. See
             // #1467. ~keep
             let follows_section = starts_new_line
-                && current_lines.len() == 1
-                && super::classify::is_numbered_section_heading(&prev.text)
+                && current_is_single_visual_line
+                && super::classify::is_numbered_section_heading(&visual_line_texts[prev_idx])
                 && !heading_wraps_onto(prev, line);
             let crossed_gap = paragraph_gap_ys.iter().any(|&gap_y| {
                 let previous_baseline = prev.upright_baseline();
@@ -2005,6 +2048,7 @@ fn blocks_to_paragraphs(
                 && (line.upright_baseline() - first.upright_baseline()).abs() <= INLINE_STYLE_BASELINE_TOLERANCE;
         }
         current_lines.push(line);
+        prev_idx = line_idx;
     }
 
     if !current_lines.is_empty()
@@ -2099,6 +2143,29 @@ pub(super) fn heading_wraps_onto(prev: &SegmentData, line: &SegmentData) -> bool
     }
     let tolerance = HEADING_WRAP_RIGHT_EDGE_TOLERANCE_FONT_FACTOR * prev.font_size.max(line.font_size).max(1.0);
     (prev_end - line_end).abs() <= tolerance
+}
+
+/// Whether the numbered-heading line `prev` reaches far enough right to have run
+/// out of room, which is the "fills its column" half of the wrap rule that
+/// [`heading_wraps_onto`]'s doc comment states but its code never measured.
+///
+/// `next_right_edge` is the widest right edge among the lines that would be merged
+/// onto it. A heading that stops well short of that width did not wrap, it ended.
+/// Measured: GH#1605's wrapped heading stops 58.7pt short of its own continuation
+/// but only ~19pt short of the widest line beneath it, while GH#1609's COMPLETE
+/// heading stops hundreds of points short of the body prose it was being welded
+/// into. A lowercase opening alone cannot tell those apart -- both continue in
+/// lowercase -- which is why it must not be the whole test. See #1609. ~keep
+pub(super) fn heading_fills_column(prev: &SegmentData, next_right_edge: f32) -> bool {
+    if !prev.font_size.is_finite() || !next_right_edge.is_finite() {
+        return false;
+    }
+    let (_, prev_end) = prev.upright_advance_extent();
+    if !prev_end.is_finite() {
+        return false;
+    }
+    let tolerance = HEADING_WRAP_RIGHT_EDGE_TOLERANCE_FONT_FACTOR * prev.font_size.max(1.0);
+    prev_end >= next_right_edge - tolerance
 }
 
 /// Reconstruct PdfLine objects from a flat list of SegmentData, grouping by baseline_y.
@@ -7390,6 +7457,88 @@ mod tests {
             paragraphs.len(),
             1,
             "prose beginning with a keyword and a number is not a heading"
+        );
+    }
+
+    /// GH#1609: the numbered-heading break terms tested a predicate against a single
+    /// SEGMENT, so a heading set with a hanging number -- `"3.1.7"` and its title on
+    /// one baseline, two spans -- never looked like a numbered heading and was left to
+    /// the ordinary paragraph-gap rule, which needs more than ordinary line pitch. The
+    /// heading was welded into the body beneath it.
+    #[test]
+    fn hanging_number_heading_is_a_paragraph_boundary() {
+        let number = SegmentData {
+            font_size: 9.0,
+            height: 9.0,
+            y: 700.0 - 9.0,
+            ..column_seg("3.1.7", 104.42, 20.0, 700.0)
+        };
+        let title = SegmentData {
+            font_size: 9.0,
+            height: 9.0,
+            y: 700.0 - 9.0,
+            ..column_seg("Innovatie/ontwikkelingen", 161.06, 100.0, 700.0)
+        };
+        let body = SegmentData {
+            font_size: 9.0,
+            height: 9.0,
+            y: 688.0 - 9.0,
+            ..column_seg(
+                "innovatie ontwikkelingen toekomstige verwachten gebied product",
+                104.42,
+                380.0,
+                688.0,
+            )
+        };
+
+        let paragraphs = segments_to_paragraphs(
+            vec![number, title, body],
+            &[(9.0, None)],
+            &[],
+            &TextRepairWitnesses::default(),
+        );
+
+        assert_eq!(
+            paragraphs.len(),
+            2,
+            "a hanging-number heading must open its own element"
+        );
+        assert_eq!(paragraph_segment_text(&paragraphs[0]), "3.1.7 Innovatie/ontwikkelingen");
+    }
+
+    /// The single-span control for the test above: same strings, same baselines, one
+    /// span. It passed before the fix and must keep passing after it.
+    #[test]
+    fn single_span_numbered_heading_is_still_a_paragraph_boundary() {
+        let heading = SegmentData {
+            font_size: 9.0,
+            height: 9.0,
+            y: 700.0 - 9.0,
+            ..column_seg("3.1.7 Innovatie/ontwikkelingen", 104.42, 156.64, 700.0)
+        };
+        let body = SegmentData {
+            font_size: 9.0,
+            height: 9.0,
+            y: 688.0 - 9.0,
+            ..column_seg(
+                "innovatie ontwikkelingen toekomstige verwachten gebied product",
+                104.42,
+                380.0,
+                688.0,
+            )
+        };
+
+        let paragraphs = segments_to_paragraphs(
+            vec![heading, body],
+            &[(9.0, None)],
+            &[],
+            &TextRepairWitnesses::default(),
+        );
+
+        assert_eq!(
+            paragraphs.len(),
+            2,
+            "a single-span numbered heading must open its own element"
         );
     }
 

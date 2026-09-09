@@ -1,0 +1,67 @@
+{
+	"id": "url_gzip_encoded_document",
+	"category": "url",
+	"description": "extract: remote document served gzip-encoded",
+	"docs": {
+		"topic": "url",
+		"title": "extract: remote document served gzip-encoded",
+		"description": "extract: remote document served gzip-encoded",
+		"side_effects": "server"
+	},
+	"tags": ["url", "document", "compression"],
+	"call": "extract",
+	"args": [
+		{
+			"name": "input",
+			"field": "input.extract_input",
+			"type": "json_object",
+			"owned": true,
+			"go_type": "ExtractInput",
+			"element_type": "ExtractInput"
+		},
+		{
+			"name": "config",
+			"field": "config",
+			"type": "json_object",
+			"optional": true
+		}
+	],
+	"input": {
+		"mock_responses": [
+			{
+				"path": "/",
+				"method": "GET",
+				"status_code": 200,
+				"headers": {
+					"content-type": "text/plain; charset=utf-8",
+					"content-encoding": "gzip"
+				},
+				"body_inline": "Remote document hello from Xberg URL e2e. This body repeats so the response is unambiguously compressed rather than stored. Remote document hello from Xberg URL e2e. This body repeats so the response is unambiguously compressed rather than stored. Remote document hello from Xberg URL e2e. This body repeats so the response is unambiguously compressed rather than stored. Remote document hello from Xberg URL e2e. This body repeats so the response is unambiguously compressed rather than stored. "
+			}
+		],
+		"extract_input": {
+			"kind": "uri",
+			"uri": "$mock_url"
+		}
+	},
+	"config": {
+		"url": {
+			"mode": "document"
+		}
+	},
+	"assertions": [
+		{
+			"type": "not_error"
+		},
+		{
+			"type": "contains",
+			"field": "results[0].content",
+			"value": "Remote document hello"
+		},
+		{
+			"type": "equals",
+			"field": "summary.remote_urls",
+			"value": 1
+		}
+	]
+}

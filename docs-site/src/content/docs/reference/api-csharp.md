@@ -7,7 +7,7 @@ title: "C# API Reference"
 <!-- To regenerate: alef docs -->
 <!-- To verify freshness: alef verify -->
 
-## C# API Reference <span class="version-badge">v1.1.3</span>
+## C# API Reference <span class="version-badge">v1.1.4</span>
 
 ### Functions
 

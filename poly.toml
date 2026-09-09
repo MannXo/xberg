@@ -1650,6 +1650,11 @@ file_safety = { exclude = [
   "vendor/**",
   "**/Cargo.toml",
   "docs-site/src/snippets/**",
+  # alef generates one API reference page per language from the whole public surface, so
+  # these grow with the API and have no split option. api-rust.md crossed the 500 KiB
+  # large-file limit on the 1.1.4 regen and api-c.md is 12 KiB behind it. Generator
+  # output, not a size regression. ~keep
+  "docs-site/src/content/docs/reference/api-*.md",
   "**/_generated/**",
   "**/coverage/**",
   "**/pkg/**",

@@ -7,7 +7,7 @@ title: "PHP API Reference"
 <!-- To regenerate: alef docs -->
 <!-- To verify freshness: alef verify -->
 
-## PHP API Reference <span class="version-badge">v1.1.3</span>
+## PHP API Reference <span class="version-badge">v1.1.4</span>
 
 ### Functions
 

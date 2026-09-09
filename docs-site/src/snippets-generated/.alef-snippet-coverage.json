@@ -90,6 +90,7 @@
     "c/summarization/summarization_extractive_smoke.md",
     "c/url/url_batch_mixed_inputs.md",
     "c/url/url_crawl_linked_pages.md",
+    "c/url/url_gzip_encoded_document.md",
     "c/url/url_html_page_extract.md",
     "c/url/url_recursive_document_urls.md",
     "c/url/url_remote_text_document.md",
@@ -182,6 +183,7 @@
     "csharp/summarization/summarization_extractive_smoke.md",
     "csharp/url/url_batch_mixed_inputs.md",
     "csharp/url/url_crawl_linked_pages.md",
+    "csharp/url/url_gzip_encoded_document.md",
     "csharp/url/url_html_page_extract.md",
     "csharp/url/url_recursive_document_urls.md",
     "csharp/url/url_remote_text_document.md",
@@ -274,6 +276,7 @@
     "dart/summarization/summarization_extractive_smoke.md",
     "dart/url/url_batch_mixed_inputs.md",
     "dart/url/url_crawl_linked_pages.md",
+    "dart/url/url_gzip_encoded_document.md",
     "dart/url/url_html_page_extract.md",
     "dart/url/url_recursive_document_urls.md",
     "dart/url/url_remote_text_document.md",
@@ -366,6 +369,7 @@
     "elixir/summarization/summarization_extractive_smoke.md",
     "elixir/url/url_batch_mixed_inputs.md",
     "elixir/url/url_crawl_linked_pages.md",
+    "elixir/url/url_gzip_encoded_document.md",
     "elixir/url/url_html_page_extract.md",
     "elixir/url/url_recursive_document_urls.md",
     "elixir/url/url_remote_text_document.md",
@@ -458,6 +462,7 @@
     "go/summarization/summarization_extractive_smoke.md",
     "go/url/url_batch_mixed_inputs.md",
     "go/url/url_crawl_linked_pages.md",
+    "go/url/url_gzip_encoded_document.md",
     "go/url/url_html_page_extract.md",
     "go/url/url_recursive_document_urls.md",
     "go/url/url_remote_text_document.md",
@@ -550,6 +555,7 @@
     "java/summarization/summarization_extractive_smoke.md",
     "java/url/url_batch_mixed_inputs.md",
     "java/url/url_crawl_linked_pages.md",
+    "java/url/url_gzip_encoded_document.md",
     "java/url/url_html_page_extract.md",
     "java/url/url_recursive_document_urls.md",
     "java/url/url_remote_text_document.md",
@@ -642,6 +648,7 @@
     "kotlin-android/summarization/summarization_extractive_smoke.md",
     "kotlin-android/url/url_batch_mixed_inputs.md",
     "kotlin-android/url/url_crawl_linked_pages.md",
+    "kotlin-android/url/url_gzip_encoded_document.md",
     "kotlin-android/url/url_html_page_extract.md",
     "kotlin-android/url/url_recursive_document_urls.md",
     "kotlin-android/url/url_remote_text_document.md",
@@ -734,6 +741,7 @@
     "php/summarization/summarization_extractive_smoke.md",
     "php/url/url_batch_mixed_inputs.md",
     "php/url/url_crawl_linked_pages.md",
+    "php/url/url_gzip_encoded_document.md",
     "php/url/url_html_page_extract.md",
     "php/url/url_recursive_document_urls.md",
     "php/url/url_remote_text_document.md",
@@ -826,6 +834,7 @@
     "python/summarization/summarization_extractive_smoke.md",
     "python/url/url_batch_mixed_inputs.md",
     "python/url/url_crawl_linked_pages.md",
+    "python/url/url_gzip_encoded_document.md",
     "python/url/url_html_page_extract.md",
     "python/url/url_recursive_document_urls.md",
     "python/url/url_remote_text_document.md",
@@ -918,6 +927,7 @@
     "ruby/summarization/summarization_extractive_smoke.md",
     "ruby/url/url_batch_mixed_inputs.md",
     "ruby/url/url_crawl_linked_pages.md",
+    "ruby/url/url_gzip_encoded_document.md",
     "ruby/url/url_html_page_extract.md",
     "ruby/url/url_recursive_document_urls.md",
     "ruby/url/url_remote_text_document.md",
@@ -1022,6 +1032,7 @@
     "rust/summarization/summarization_extractive_smoke.md",
     "rust/url/url_batch_mixed_inputs.md",
     "rust/url/url_crawl_linked_pages.md",
+    "rust/url/url_gzip_encoded_document.md",
     "rust/url/url_html_page_extract.md",
     "rust/url/url_recursive_document_urls.md",
     "rust/url/url_remote_text_document.md",
@@ -1114,6 +1125,7 @@
     "swift/summarization/summarization_extractive_smoke.md",
     "swift/url/url_batch_mixed_inputs.md",
     "swift/url/url_crawl_linked_pages.md",
+    "swift/url/url_gzip_encoded_document.md",
     "swift/url/url_html_page_extract.md",
     "swift/url/url_recursive_document_urls.md",
     "swift/url/url_remote_text_document.md",
@@ -1206,6 +1218,7 @@
     "typescript/summarization/summarization_extractive_smoke.md",
     "typescript/url/url_batch_mixed_inputs.md",
     "typescript/url/url_crawl_linked_pages.md",
+    "typescript/url/url_gzip_encoded_document.md",
     "typescript/url/url_html_page_extract.md",
     "typescript/url/url_recursive_document_urls.md",
     "typescript/url/url_remote_text_document.md",
@@ -1298,6 +1311,7 @@
     "wasm/summarization/summarization_extractive_smoke.md",
     "wasm/url/url_batch_mixed_inputs.md",
     "wasm/url/url_crawl_linked_pages.md",
+    "wasm/url/url_gzip_encoded_document.md",
     "wasm/url/url_html_page_extract.md",
     "wasm/url/url_recursive_document_urls.md",
     "wasm/url/url_remote_text_document.md",
@@ -1390,6 +1404,7 @@
     "zig/summarization/summarization_extractive_smoke.md",
     "zig/url/url_batch_mixed_inputs.md",
     "zig/url/url_crawl_linked_pages.md",
+    "zig/url/url_gzip_encoded_document.md",
     "zig/url/url_html_page_extract.md",
     "zig/url/url_recursive_document_urls.md",
     "zig/url/url_remote_text_document.md"
@@ -2457,6 +2472,18 @@
         "language": "c"
       },
       "path": "c/url/url_crawl_linked_pages.md",
+      "language": "c",
+      "target": "c",
+      "session": "c",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "c"
+      },
+      "path": "c/url/url_gzip_encoded_document.md",
       "language": "c",
       "target": "c",
       "session": "c",
@@ -3569,6 +3596,18 @@
     },
     {
       "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "csharp"
+      },
+      "path": "csharp/url/url_gzip_encoded_document.md",
+      "language": "csharp",
+      "target": "csharp",
+      "session": "csharp",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
         "fixture_id": "url_html_page_extract",
         "language": "csharp"
       },
@@ -4665,6 +4704,18 @@
         "language": "dart"
       },
       "path": "dart/url/url_crawl_linked_pages.md",
+      "language": "dart",
+      "target": "dart",
+      "session": "dart",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "dart"
+      },
+      "path": "dart/url/url_gzip_encoded_document.md",
       "language": "dart",
       "target": "dart",
       "session": "dart",
@@ -5777,6 +5828,18 @@
     },
     {
       "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "elixir"
+      },
+      "path": "elixir/url/url_gzip_encoded_document.md",
+      "language": "elixir",
+      "target": "elixir",
+      "session": "elixir",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
         "fixture_id": "url_html_page_extract",
         "language": "elixir"
       },
@@ -6873,6 +6936,18 @@
         "language": "go"
       },
       "path": "go/url/url_crawl_linked_pages.md",
+      "language": "go",
+      "target": "go",
+      "session": "go",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "go"
+      },
+      "path": "go/url/url_gzip_encoded_document.md",
       "language": "go",
       "target": "go",
       "session": "go",
@@ -7985,6 +8060,18 @@
     },
     {
       "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "java"
+      },
+      "path": "java/url/url_gzip_encoded_document.md",
+      "language": "java",
+      "target": "java",
+      "session": "java",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
         "fixture_id": "url_html_page_extract",
         "language": "java"
       },
@@ -9081,6 +9168,18 @@
         "language": "kotlin_android"
       },
       "path": "kotlin-android/url/url_crawl_linked_pages.md",
+      "language": "kotlin",
+      "target": "kotlin_android",
+      "session": "kotlin_android",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "kotlin_android"
+      },
+      "path": "kotlin-android/url/url_gzip_encoded_document.md",
       "language": "kotlin",
       "target": "kotlin_android",
       "session": "kotlin_android",
@@ -10193,6 +10292,18 @@
     },
     {
       "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "php"
+      },
+      "path": "php/url/url_gzip_encoded_document.md",
+      "language": "php",
+      "target": "php",
+      "session": "php",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
         "fixture_id": "url_html_page_extract",
         "language": "php"
       },
@@ -11297,6 +11408,18 @@
     },
     {
       "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "python"
+      },
+      "path": "python/url/url_gzip_encoded_document.md",
+      "language": "python",
+      "target": "python",
+      "session": "python",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
         "fixture_id": "url_html_page_extract",
         "language": "python"
       },
@@ -12393,6 +12516,18 @@
         "language": "ruby"
       },
       "path": "ruby/url/url_crawl_linked_pages.md",
+      "language": "ruby",
+      "target": "ruby",
+      "session": "ruby",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "ruby"
+      },
+      "path": "ruby/url/url_gzip_encoded_document.md",
       "language": "ruby",
       "target": "ruby",
       "session": "ruby",
@@ -13859,6 +13994,21 @@
     },
     {
       "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "rust"
+      },
+      "path": "rust/url/url_gzip_encoded_document.md",
+      "language": "rust",
+      "target": "rust",
+      "session": "rust",
+      "requires": [
+        "crate:serde_json",
+        "crate:tokio"
+      ],
+      "side_effect": "server"
+    },
+    {
+      "key": {
         "fixture_id": "url_html_page_extract",
         "language": "rust"
       },
@@ -14972,6 +15122,18 @@
     },
     {
       "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "swift"
+      },
+      "path": "swift/url/url_gzip_encoded_document.md",
+      "language": "swift",
+      "target": "swift",
+      "session": "swift",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
         "fixture_id": "url_html_page_extract",
         "language": "swift"
       },
@@ -16068,6 +16230,18 @@
         "language": "node"
       },
       "path": "typescript/url/url_crawl_linked_pages.md",
+      "language": "typescript",
+      "target": "node",
+      "session": "node",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "node"
+      },
+      "path": "typescript/url/url_gzip_encoded_document.md",
       "language": "typescript",
       "target": "node",
       "session": "node",
@@ -17180,6 +17354,18 @@
     },
     {
       "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "wasm"
+      },
+      "path": "wasm/url/url_gzip_encoded_document.md",
+      "language": "typescript",
+      "target": "wasm",
+      "session": "wasm",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
         "fixture_id": "url_html_page_extract",
         "language": "wasm"
       },
@@ -18276,6 +18462,18 @@
         "language": "zig"
       },
       "path": "zig/url/url_crawl_linked_pages.md",
+      "language": "zig",
+      "target": "zig",
+      "session": "zig",
+      "requires": [],
+      "side_effect": "server"
+    },
+    {
+      "key": {
+        "fixture_id": "url_gzip_encoded_document",
+        "language": "zig"
+      },
+      "path": "zig/url/url_gzip_encoded_document.md",
       "language": "zig",
       "target": "zig",
       "session": "zig",
@@ -23526,6 +23724,66 @@
     },
     {
       "fixture_id": "url_crawl_linked_pages",
+      "language": "zig"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "c"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "csharp"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "dart"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "elixir"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "go"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "java"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "kotlin_android"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "node"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "php"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "python"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "ruby"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "rust"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "swift"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "wasm"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
       "language": "zig"
     },
     {
@@ -29096,6 +29354,66 @@
     },
     {
       "fixture_id": "url_crawl_linked_pages",
+      "language": "zig"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "c"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "csharp"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "dart"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "elixir"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "go"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "java"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "kotlin_android"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "node"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "php"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "python"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "ruby"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "rust"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "swift"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
+      "language": "wasm"
+    },
+    {
+      "fixture_id": "url_gzip_encoded_document",
       "language": "zig"
     },
     {

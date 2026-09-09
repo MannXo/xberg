@@ -13728,8 +13728,17 @@ class PaddleOcrConfig {
   /// - `"mobile"` (default): Lightweight models (~4.5MB detection, ~16.5MB recognition), fast download and inference
   /// - `"server"`: Large, high-accuracy models (~88MB detection, ~84MB recognition), best for GPU or complex documents
   ///
-  /// For PP-OCRv6 (`model_version = "pp-ocrv6"`): `"medium"` (default), `"small"`, or `"tiny"`.
-  /// A legacy `"mobile"`/`"server"` tier under v6 falls back to `"medium"`.
+  /// For PP-OCRv6 (`model_version = "pp-ocrv6"`, the default):
+  /// - `"small"`: ~9.9MB detection, full 18,708-char CJK+Latin+JA/KO recognition dictionary.
+  ///   The default `"mobile"` resolves here, so this is what an unconfigured extraction uses.
+  /// - `"medium"`: ~62MB detection, same dictionary. Higher accuracy, substantially slower on
+  ///   CPU. A legacy `"server"` tier, or any unrecognised value, resolves here.
+  /// - `"tiny"`: ~1.8MB detection, but a reduced 6,904-char (~zh/en) dictionary — it cannot
+  ///   read the scripts the other two cover.
+  ///
+  /// Note PaddleOCR pages do not run concurrently: the ONNX session is held behind a mutex, so
+  /// the thread budget goes to intra-op parallelism and wall time scales with page count times
+  /// per-page inference. Tier choice therefore dominates throughput on multi-page documents.
   final String modelTier;
 
   /// Model generation: `"pp-ocrv6"` (default) or `"pp-ocrv5"`.
@@ -13738,7 +13747,7 @@ class PaddleOcrConfig {
   /// tiers (see `model_tier`). Scripts outside the v6 unified coverage (Arabic, Cyrillic,
   /// Devanagari, Greek, Tamil, Telugu, Thai) transparently fall back to the PP-OCRv5
   /// per-script recognition models. Defaults to `"pp-ocrv6"`; the default `model_tier`
-  /// (`"mobile"`) resolves to the v6 `"medium"` tier. Select `"pp-ocrv5"` to pin the
+  /// (`"mobile"`) resolves to the v6 `"small"` tier. Select `"pp-ocrv5"` to pin the
   /// legacy per-script/unified fleet.
   final String modelVersion;
 

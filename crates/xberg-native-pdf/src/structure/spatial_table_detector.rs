@@ -2327,10 +2327,35 @@ fn find_intersections(h_edges: &[Edge], v_edges: &[Edge]) -> Vec<Intersection> {
     pts
 }
 
+/// Tolerance for judging whether a V edge spans a *candidate cell's* Y-range, at
+/// cell-construction time in `build_cells_from_intersections`.
+///
+/// This is deliberately a SEPARATE constant from `BAND_RULE_SPAN_TOL`, not a reuse of it, even
+/// though both answer the same shape of question ("does this edge actually run through the
+/// range?") on opposite axes. `BAND_RULE_SPAN_TOL` was tightened from 3.0 (`SNAP_TOL`) down to
+/// 1.0 specifically because on the X axis a too-LOOSE tolerance was the bug: it let a V rule that
+/// fell up to 3pt short *at each end* still count as dividing a row's columns, manufacturing a
+/// phantom column boundary the drawn rule did not justify (xberg-io/xberg#1588). The fix needed
+/// to be conservative in the direction of NOT crediting a short edge.
+///
+/// On the Y axis the failure direction is the opposite. A too-TIGHT tolerance here does not merely
+/// merge columns within a row that still exists — it can stop the row's cell from forming at all
+/// (xberg-io/xberg#1601), which is the more severe failure. A per-cell rule drawn a few points
+/// short of its own row's true top/bottom (ordinary visual padding) must still count as spanning
+/// that row, while a phantom cell bridging two physically separate ruled regions — tens of points
+/// apart (40pt in this file's `gh1601_graphics_free_gap_does_not_bridge_two_tables` fixture, 54pt
+/// in the reporter's carrier document) — must not. `BAND_RULE_SPAN_TOL`'s 1.0pt is too tight for
+/// the first case; reusing it would silently drop legitimate padded-rule tables' rows. 6.0pt sits
+/// roughly 1-3x above a "a few points" (2-5pt) legitimate inset and roughly 7x below the smallest
+/// observed phantom-cell gap in either direction (40 / 6 ≈ 6.7, 54 / 6 ≈ 9), so it separates the
+/// two classes with comfortable margin on both sides without conflating this axis's tolerance with
+/// the X axis's differently-motivated one. ~keep
+const CELL_RULE_SPAN_TOL: f32 = 6.0;
+
 /// Build cells from intersection points.
 /// A cell exists when all four corners (x1,y1), (x2,y1), (x1,y2), (x2,y2) are present
 /// and there is no intermediate intersection between them on either axis.
-fn build_cells_from_intersections(pts: &[Intersection]) -> Vec<IntersectionCell> {
+fn build_cells_from_intersections(pts: &[Intersection], v_edges: &[Edge]) -> Vec<IntersectionCell> {
     use std::collections::BTreeSet;
 
     let mut xs: Vec<f32> = pts.iter().map(|p| p.x).collect();
@@ -2354,6 +2379,27 @@ fn build_cells_from_intersections(pts: &[Intersection]) -> Vec<IntersectionCell>
 
     let has = |xi: usize, yi: usize| -> bool { present.contains(&(yi * nx + xi)) };
 
+    // A candidate cell's LEFT and RIGHT sides must each be a drawn V edge that
+    // actually spans the cell's Y-range, not merely two independently-existing
+    // crossing points at its top and bottom. Without this, two unrelated ruled
+    // grids that happen to share column X-positions (a common shape: the same
+    // field layout repeated after a section heading) produce a phantom cell
+    // bridging any graphics-free gap between them — wide enough to swallow
+    // whatever text sits in the gap (xberg-io/xberg#1601). This is the same
+    // "four corners are not four sides" containment principle
+    // `band_column_groups`/`BAND_RULE_SPAN_TOL` already applies on the X axis
+    // (xberg-io/xberg#1580) — applied here on the Y axis at cell-construction
+    // time, before a phantom cell can ever reach that later check, but with its
+    // OWN tolerance (`CELL_RULE_SPAN_TOL`, see its doc comment for why the two
+    // axes cannot share a constant). ~keep
+    let v_edge_spans = |x: f32, y_lo: f32, y_hi: f32| -> bool {
+        v_edges.iter().any(|edge| {
+            (edge.coord - x).abs() <= SNAP_TOL
+                && edge.start <= y_lo + CELL_RULE_SPAN_TOL
+                && edge.end >= y_hi - CELL_RULE_SPAN_TOL
+        })
+    };
+
     let mut cells = Vec::new();
     for yi in 0..ny {
         for xi in 0..nx {
@@ -2361,10 +2407,11 @@ fn build_cells_from_intersections(pts: &[Intersection]) -> Vec<IntersectionCell>
                 continue;
             }
             let next_xi = ((xi + 1)..nx).find(|&nxi| has(nxi, yi));
-            let next_yi = ((yi + 1)..ny).find(|&nyi| has(xi, nyi));
+            let next_yi = ((yi + 1)..ny).find(|&nyi| has(xi, nyi) && v_edge_spans(xs[xi], ys[yi], ys[nyi]));
 
             if let (Some(nxi), Some(nyi)) = (next_xi, next_yi)
                 && has(nxi, nyi)
+                && v_edge_spans(xs[nxi], ys[yi], ys[nyi])
             {
                 cells.push(IntersectionCell {
                     x1: xs[xi],
@@ -2893,7 +2940,7 @@ fn build_grid_from_lines(
     // (xberg-io/xberg#1580) — an extended grid has no V edge that ever spans any band, so
     // merging there would collapse every row to one cell instead of narrowing a phantom cut.
     let (cells, cells_are_intersections) = if intersections.len() >= 4 {
-        let c = build_cells_from_intersections(&intersections);
+        let c = build_cells_from_intersections(&intersections, &v_edges);
         if c.is_empty() {
             // Lines exist but don't form real intersection cells — try extended grid. ~keep
             (build_extended_grid_cells(&h_edges, &v_edges), false)
@@ -5541,7 +5588,21 @@ mod tests {
             Intersection { x: 0.0, y: 100.0 },
             Intersection { x: 100.0, y: 100.0 },
         ];
-        let cells = build_cells_from_intersections(&pts);
+        // Real drawn V edges spanning the full cell height, so the "four
+        // corners are not four sides" containment check accepts the cell. ~keep
+        let v_edges = [
+            Edge {
+                coord: 0.0,
+                start: 0.0,
+                end: 100.0,
+            },
+            Edge {
+                coord: 100.0,
+                start: 0.0,
+                end: 100.0,
+            },
+        ];
+        let cells = build_cells_from_intersections(&pts, &v_edges);
         assert_eq!(cells.len(), 1, "4 corners should produce 1 cell");
     }
 
@@ -5585,6 +5646,219 @@ mod tests {
         assert_eq!(groups.len(), 2, "Distant cells should be in separate groups");
     }
 
+    /// xberg-io/xberg#1601: two disjoint bordered tables that happen to share
+    /// column X-positions (a common shape — same field layout repeated after a
+    /// section heading) are separated by a 40pt band with NO path of any kind
+    /// in it. `build_cells_from_intersections` accepts a cell as soon as its
+    /// four corners are independently-existing crossing points, with no check
+    /// that a drawn V edge actually spans the candidate cell's Y-range — so it
+    /// manufactures a phantom cell bridging the two tables' shared X columns
+    /// across the empty band, and the heading text sitting in the band gets
+    /// admitted into that phantom cell as a one-cell row of the merged table.
+    #[test]
+    fn gh1601_graphics_free_gap_does_not_bridge_two_tables() {
+        let lines = vec![
+            // Table B (lower): rows y=[10,30],[30,50], cols x=[10,30],[30,60]. ~keep
+            make_h_line(10.0, 10.0, 50.0),
+            make_h_line(10.0, 30.0, 50.0),
+            make_h_line(10.0, 50.0, 50.0),
+            make_v_line(10.0, 10.0, 40.0),
+            make_v_line(30.0, 10.0, 40.0),
+            make_v_line(60.0, 10.0, 40.0),
+            // Table A (upper): SAME column X-positions, rows y=[90,110],[110,130].
+            // The gap y=[50,90] (40pt) carries no path at all. ~keep
+            make_h_line(10.0, 90.0, 50.0),
+            make_h_line(10.0, 110.0, 50.0),
+            make_h_line(10.0, 130.0, 50.0),
+            make_v_line(10.0, 90.0, 40.0),
+            make_v_line(30.0, 90.0, 40.0),
+            make_v_line(60.0, 90.0, 40.0),
+        ];
+        let spans = vec![
+            create_test_span("B21", 12.0, 12.0, 8.0, 10.0),
+            create_test_span("B22", 35.0, 12.0, 8.0, 10.0),
+            create_test_span("B11", 12.0, 32.0, 8.0, 10.0),
+            create_test_span("B12", 35.0, 32.0, 8.0, 10.0),
+            // The section heading, printed inside the graphics-free gap. ~keep
+            create_test_span("HEADINGTAG", 12.0, 60.0, 20.0, 10.0),
+            create_test_span("A21", 12.0, 92.0, 8.0, 10.0),
+            create_test_span("A22", 35.0, 92.0, 8.0, 10.0),
+            create_test_span("A11", 12.0, 112.0, 8.0, 10.0),
+            create_test_span("A12", 35.0, 112.0, 8.0, 10.0),
+        ];
+        let config = TableDetectionConfig {
+            horizontal_strategy: TableStrategy::Lines,
+            vertical_strategy: TableStrategy::Lines,
+            min_table_cells: 2,
+            min_table_columns: 2,
+            ..TableDetectionConfig::default()
+        };
+
+        let tables = detect_tables_from_intersections(&spans, &lines, &config);
+
+        let heading_rows: Vec<&TableRow> = tables
+            .iter()
+            .flat_map(|t| t.rows.iter())
+            .filter(|r| r.cells.iter().any(|c| c.text.contains("HEADINGTAG")))
+            .collect();
+        assert!(
+            heading_rows.is_empty(),
+            "the heading printed in the graphics-free gap must not become a row of either \
+             table (it must stay out of the element stream as a table row entirely), got: \
+             {heading_rows:?}"
+        );
+        assert_eq!(
+            tables.len(),
+            2,
+            "two disjoint same-column grids separated by a graphics-free gap must remain \
+             two tables, not be bridged into one, got: {tables:?}"
+        );
+    }
+
+    /// Negative control for xberg-io/xberg#1601: a heading sitting INSIDE a
+    /// genuinely ruled band of ONE continuously-ruled table (real V edges span
+    /// every row, including the heading's) must stay part of that one table.
+    /// This is the shape the fix must not break — the issue's own page-2
+    /// control.
+    #[test]
+    fn gh1601_heading_row_inside_a_ruled_band_stays_in_one_table() {
+        let lines = vec![
+            make_h_line(10.0, 10.0, 50.0),
+            make_h_line(10.0, 30.0, 50.0),
+            make_h_line(10.0, 50.0, 50.0),
+            make_h_line(10.0, 70.0, 50.0),
+            // V edges span the FULL height across all three row bands —
+            // this is one continuously-ruled table, not two abutting ones. ~keep
+            make_v_line(10.0, 10.0, 60.0),
+            make_v_line(30.0, 10.0, 60.0),
+            make_v_line(60.0, 10.0, 60.0),
+        ];
+        let spans = vec![
+            create_test_span("R11", 12.0, 12.0, 8.0, 10.0),
+            create_test_span("R12", 35.0, 12.0, 8.0, 10.0),
+            // The heading occupies only the left column of the middle row —
+            // a real row of the table, ruled above and below. ~keep
+            create_test_span("HEADINGTAG", 12.0, 32.0, 8.0, 10.0),
+            create_test_span("R21", 12.0, 52.0, 8.0, 10.0),
+            create_test_span("R22", 35.0, 52.0, 8.0, 10.0),
+        ];
+        let config = TableDetectionConfig {
+            horizontal_strategy: TableStrategy::Lines,
+            vertical_strategy: TableStrategy::Lines,
+            min_table_cells: 2,
+            min_table_columns: 2,
+            ..TableDetectionConfig::default()
+        };
+
+        let tables = detect_tables_from_intersections(&spans, &lines, &config);
+
+        assert_eq!(
+            tables.len(),
+            1,
+            "a heading inside a genuinely ruled band must not split the table apart, got: {tables:?}"
+        );
+        assert_eq!(
+            tables[0].rows.len(),
+            3,
+            "all three ruled rows, including the heading's, must stay in the one table, got: {:?}",
+            tables[0]
+        );
+        let heading_present = tables[0]
+            .rows
+            .iter()
+            .any(|r| r.cells.iter().any(|c| c.text.contains("HEADINGTAG")));
+        assert!(
+            heading_present,
+            "the heading row must still be present in the one table"
+        );
+    }
+
+    /// xberg-io/xberg#1601 follow-up: the containment check in
+    /// `build_cells_from_intersections` must use its OWN tolerance
+    /// (`CELL_RULE_SPAN_TOL`), not the X-axis `BAND_RULE_SPAN_TOL` (1.0pt) —
+    /// that value is too tight for legitimate per-cell rule padding. Direct,
+    /// low-level test of the gate itself (not the full pipeline): a single
+    /// row's V edges are drawn 3pt short of the row's true top and bottom on
+    /// BOTH ends (a realistic per-cell rule inset), well inside "a few
+    /// points" but past the old 1.0pt X-axis tolerance. The cell must still
+    /// form.
+    #[test]
+    fn gh1601_cell_rule_inset_a_few_points_still_forms_the_cell() {
+        let pts = vec![
+            Intersection { x: 0.0, y: 0.0 },
+            Intersection { x: 100.0, y: 0.0 },
+            Intersection { x: 0.0, y: 20.0 },
+            Intersection { x: 100.0, y: 20.0 },
+        ];
+        // Row is y=[0,20]; each V edge is inset 3pt from both ends
+        // (y=[3,17]) instead of running the row's full height — ordinary
+        // per-cell rule padding, not a phantom-table-bridging gap. ~keep
+        let v_edges = [
+            Edge {
+                coord: 0.0,
+                start: 3.0,
+                end: 17.0,
+            },
+            Edge {
+                coord: 100.0,
+                start: 3.0,
+                end: 17.0,
+            },
+        ];
+        let cells = build_cells_from_intersections(&pts, &v_edges);
+        assert_eq!(
+            cells.len(),
+            1,
+            "a V edge inset a few points from its own row's true boundary must still form the cell"
+        );
+    }
+
+    /// Companion negative control, at the same low level: a 40pt gap between
+    /// two row bands (the shape from `gh1601_graphics_free_gap_does_not_bridge_two_tables`,
+    /// isolated to `build_cells_from_intersections` itself) must still be
+    /// rejected under the new, looser `CELL_RULE_SPAN_TOL` (6.0pt) — the
+    /// looser constant closes the false-negative gap on legitimate insets
+    /// without reopening the phantom-cell bug it was introduced to fix.
+    #[test]
+    fn gh1601_cell_rule_span_tol_does_not_reopen_the_gap_bridge() {
+        let pts = vec![
+            Intersection { x: 0.0, y: 0.0 },
+            Intersection { x: 100.0, y: 0.0 },
+            Intersection { x: 0.0, y: 40.0 },
+            Intersection { x: 100.0, y: 40.0 },
+        ];
+        // No V edge reaches anywhere near spanning y=[0,40] — each side's
+        // edges only cover their own table's real rows, exactly like the
+        // reporter's 54pt carrier gap and this file's 40pt fixture gap. ~keep
+        let v_edges = [
+            Edge {
+                coord: 0.0,
+                start: 0.0,
+                end: 10.0,
+            },
+            Edge {
+                coord: 100.0,
+                start: 0.0,
+                end: 10.0,
+            },
+            Edge {
+                coord: 0.0,
+                start: 30.0,
+                end: 40.0,
+            },
+            Edge {
+                coord: 100.0,
+                start: 30.0,
+                end: 40.0,
+            },
+        ];
+        let cells = build_cells_from_intersections(&pts, &v_edges);
+        assert!(
+            cells.is_empty(),
+            "a 40pt graphics-free gap must still be rejected under the looser CELL_RULE_SPAN_TOL, got: {cells:?}"
+        );
+    }
+
     #[test]
     fn test_intersection_rect_decomposition() {
         let lines = vec![crate::elements::PathContent::rect(10.0, 10.0, 100.0, 50.0)];
@@ -5606,7 +5880,25 @@ mod tests {
             Intersection { x: 50.0, y: 100.0 },
             Intersection { x: 100.0, y: 100.0 },
         ];
-        let cells = build_cells_from_intersections(&pts);
+        // Real drawn V edges spanning the full grid height at every column. ~keep
+        let v_edges = [
+            Edge {
+                coord: 0.0,
+                start: 0.0,
+                end: 100.0,
+            },
+            Edge {
+                coord: 50.0,
+                start: 0.0,
+                end: 100.0,
+            },
+            Edge {
+                coord: 100.0,
+                start: 0.0,
+                end: 100.0,
+            },
+        ];
+        let cells = build_cells_from_intersections(&pts, &v_edges);
         assert_eq!(cells.len(), 4, "3x3 grid should produce 4 cells");
         let groups = group_cells_into_tables(&cells);
         assert_eq!(groups.len(), 1, "All 4 cells should form 1 table");

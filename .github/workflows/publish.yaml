@@ -1266,6 +1266,21 @@ jobs:
           ort-version: "1.24.2"
           dest-dir: crates/xberg-php
 
+      # GH#1606: the Linux runners ship GCC 13+, and the extension picked up
+      # `basic_string::_M_replace_cold@GLIBCXX_3.4.31` from their libstdc++. Debian 12
+      # tops out at GLIBCXX_3.4.30, so `php -v` could not load the module at all.
+      # Measured on the shipped v1.1.3 artifact, that single symbol was the ONLY floor
+      # above Debian 12: the highest glibc requirement was GLIBC_2.35, already below
+      # its 2.36. Linking libstdc++ statically removes the floor without pinning this
+      # job to a runner image GitHub will eventually retire. Set here rather than in
+      # `.cargo/config.toml` (alef-generated) and as a step rather than a job `env:`,
+      # because RUSTFLAGS overrides the config's `rustflags` whenever it is set --
+      # including when set to the empty string, which would strip the macOS leg's
+      # `-undefined,dynamic_lookup` and break that build instead. ~keep
+      - name: Link libstdc++ statically (GH#1606)
+        if: startsWith(matrix.platform.os, 'ubuntu')
+        run: echo "RUSTFLAGS=-C link-arg=-static-libstdc++" >> "$GITHUB_ENV"
+
       - uses: xberg-io/actions/build-php-extension@v1
         with:
           crate-name: xberg-php

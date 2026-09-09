@@ -5919,7 +5919,10 @@ mod tests {
     /// ocr_inline_images=true on a text-only PDF (no embedded images) must succeed
     /// and return an empty images list, not panic or error.
     #[tokio::test]
-    #[cfg(feature = "pdf")]
+    // `ocr_inline_images` is rejected by config validation unless an OCR backend is
+    // compiled in, so the `pdf`-only feature leg cannot run this test -- gating it on
+    // `pdf` alone left that leg permanently red for a reason unrelated to PDF. ~keep
+    #[cfg(all(feature = "pdf", any(feature = "ocr", feature = "ocr-pipeline")))]
     async fn test_pdf_ocr_inline_images_no_images_in_document() {
         use crate::core::config::ExtractionConfig;
         use crate::core::config::pdf::PdfConfig;

@@ -104,7 +104,7 @@ parking_lot = "0.12.5"
 # workspace; needs no [patch.crates-io] entry (see the note above that block).
 pdfium-render = { package = "xberg-pdfium-render", path = "./crates/xberg-pdfium-render", version = "1.1.3" }
 rayon = "1.12.0"
-reqwest = { version = "0.13.4", default-features = false }
+reqwest = { version = "0.13.5", default-features = false }
 # SVG rendering (resvg re-exports tiny_skia and usvg; default-features = false
 # drops text, system-fonts, memmap-fonts, raster-images — all pure-Rust, WASM-safe).
 resvg = { version = "0.48", default-features = false }
@@ -140,7 +140,7 @@ tracing = "0.1"
 # no-ORT targets (wasm32, x86_64-linux-android). The ONNX frontend crate is CPU-only
 # and WASM-safe; the top-level `tract` facade instead defaults to CUDA and bundles
 # GPU backends, so it is unusable here. See issue #1275.
-tract-onnx = { version = "0.23.6", default-features = false }
+tract-onnx = { version = "0.23.7", default-features = false }
 tree-sitter-language-pack = { version = "1.16.2", default-features = false, features = ["serde"] }
 url = "2.5.8"
 # usvg (re-exported by resvg) with only the `writer` feature so `Tree::to_string`

@@ -1264,7 +1264,7 @@ crawlberg = { workspace = true, optional = true }
 dbase = { workspace = true, optional = true }
 dirs = "7"
 either = { version = "1", optional = true }
-encoding_rs = { version = "0.8.40" }
+encoding_rs = { version = "0.8.41" }
 fast_image_resize = { version = "6.1.0", optional = true }
 flate2 = { version = "1.1", optional = true }
 hayro-jbig2 = { version = "0.3", default-features = false, features = ["std"], optional = true }
@@ -1298,7 +1298,7 @@ lofty = { version = "0.25", optional = true }
 # pulls reqwest/rustls → aws-lc-rs → aws-lc-sys; the MSVC build is handled by the fix shipped in
 # xberg-io/liter-llm). hf-hub 1.0 now rides the same reqwest/aws-lc-rs stack.
 log = { workspace = true }
-lopdf = { version = "0.44.0", optional = true, default-features = false }
+lopdf = { version = "0.45.0", optional = true, default-features = false }
 mail-parser = { version = "0.11.8", features = ["full_encoding"], optional = true }
 # AsciiMath parser, used to reach LaTeX through the shared MathML converter.
 mathemascii = { version = "0.4.0", optional = true }
@@ -1426,7 +1426,7 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["s
 tract-onnx = { workspace = true, optional = true }
 # Typst's own parser, used to convert Typst math to LaTeX.
 typst-syntax = { version = "0.15.1", optional = true }
-unhwp = { version = "0.9.1", default-features = false, features = ["hwpx"], optional = true }
+unhwp = { version = "0.10.0", default-features = false, features = ["hwpx"], optional = true }
 unicode-normalization = { version = "0.1.25", optional = true }
 url = { workspace = true }
 urlencoding = "2"

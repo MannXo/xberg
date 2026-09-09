@@ -1427,8 +1427,24 @@ pub(super) fn is_body_size_bold_signal(para: &PdfParagraph, body_font_size: f32)
         && !super::layout_classify::is_separator_text(trimmed)
 }
 
+/// On typography alone a bold body-size line needs at least this many words to read
+/// as a heading -- shorter bold fragments are far more often emphasis, a label, or a
+/// run-in lead. See [`is_body_size_bold_heading_candidate`] for the exemption. ~keep
+const MIN_BOLD_HEADING_WORD_COUNT: usize = 3;
+
 pub(super) fn is_body_size_bold_heading_candidate(para: &PdfParagraph, body_font_size: f32) -> bool {
-    is_body_size_bold_signal(para, body_font_size) && para.word_count > 2
+    if !is_body_size_bold_signal(para, body_font_size) {
+        return false;
+    }
+    // A numbered section heading carries its own evidence and does not need to clear
+    // the word-count floor. Requiring three words silently excluded every two-word
+    // numbered title -- `3. PRIJZEN`, `1. INTRODUCTION` -- from heading promotion, so
+    // it stayed a plain bold paragraph and a RUN of them coalesced into a single bold
+    // line in the rendered output while the element stream still showed them apart.
+    // Measured on GH#1611: `ARTIKEL 1. TOEPASSELIJKHEID` (3 words) was promoted and
+    // `1. TOEPASSELIJKHEID` (2 words) was not, at identical font, weight and body
+    // size -- the keyword contributed nothing but the third word. See #1611. ~keep
+    para.word_count >= MIN_BOLD_HEADING_WORD_COUNT || is_numbered_section_heading(paragraph_plain_text(para).trim())
 }
 
 /// Preserve peer H2 sections when a sparse document repeats their font tier at

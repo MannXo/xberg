@@ -8288,6 +8288,37 @@ mod tests {
         paragraph
     }
 
+    /// GH#1611: a two-word numbered heading fell below the bold-heading word-count
+    /// floor, so it was never promoted. It stayed a plain bold paragraph, and a RUN of
+    /// them coalesced into a single bold line in the rendered markdown while the
+    /// element stream still showed them apart. The keyword form cleared the floor only
+    /// by contributing a third word -- nothing else about the two lines differed.
+    #[test]
+    fn a_two_word_numbered_heading_is_a_bold_heading_candidate() {
+        let keyword = body_size_paragraph_with_bbox("ARTIKEL 3. PRIJZEN", true, None, (72.0, 700.0, 260.0, 712.0));
+        let bare = body_size_paragraph_with_bbox("3. PRIJZEN", true, None, (72.0, 700.0, 200.0, 712.0));
+
+        assert!(
+            is_body_size_bold_heading_candidate(&keyword, 12.0),
+            "the three-word keyword form was already a candidate"
+        );
+        assert!(
+            is_body_size_bold_heading_candidate(&bare, 12.0),
+            "a numbered section heading carries its own evidence and must not need a third word"
+        );
+    }
+
+    /// The floor this exempts is still load-bearing for everything else: a short bold
+    /// fragment with no numbering is emphasis or a label, not a heading.
+    #[test]
+    fn a_two_word_unnumbered_bold_fragment_is_not_a_heading_candidate() {
+        let fragment = body_size_paragraph_with_bbox("Note well", true, None, (72.0, 700.0, 160.0, 712.0));
+        assert!(
+            !is_body_size_bold_heading_candidate(&fragment, 12.0),
+            "an unnumbered two-word bold fragment must stay below the heading floor"
+        );
+    }
+
     fn heading_page(heading: &str, heading_size: f32, body: &str) -> Vec<SegmentData> {
         let mut heading_segment = seg_heuristic(heading, heading_size, 700.0);
         heading_segment.is_bold = true;

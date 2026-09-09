@@ -53,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   capitalised word standing in front of an enumerator. Prose that opens the same way — `Artikel 12
   van de wet is van toepassing.` — stays prose, because behind a keyword the text after the
   enumerator must still be capitalised (GH#1608).
+- PDF heading detection no longer skips a numbered heading that is only two words long. Promotion
+  of a bold, body-size line to a heading required more than two words — a floor that keeps short
+  bold fragments out — and a numbered section title such as `3. PRIJZEN` or `1. INTRODUCTION` falls
+  below it. Those lines stayed plain bold paragraphs, and a run of them was then coalesced into a
+  single bold line in the rendered output, while the element stream still reported them separately.
+  A numbered section heading is now exempt from the word-count floor; everything else still has to
+  clear it (GH#1611).
 - OCR no longer adopts a markdown table rebuild that loses content. The rebuilt page replaced the
   original whenever it was merely non-empty, so a rebuild that dropped text still won. The rebuild
   is now rejected, with a warning naming both word counts, when it retains fewer words than the

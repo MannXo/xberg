@@ -1052,8 +1052,24 @@ pub(super) fn is_section_pattern(text: &str) -> bool {
 ///
 /// A single-level number followed by mixed-case text ("1. Énumération") is a
 /// list item and returns `false`.
+///
+/// A heading may also put a keyword in front of its number -- "ARTIKEL 1.
+/// TOEPASSELIJKHEID", "Appendix 1 Product list", "Exhibit A PRODUCT LIST". That
+/// form is recognised by shape rather than by a keyword list; see
+/// [`section_keyword_prefix`]. Behind a keyword the remainder need only be
+/// capitalised, which is what keeps "Artikel 12 van de wet is van toepassing."
+/// classified as the prose it is. See #1608.
 pub(super) fn is_numbered_section_heading(text: &str) -> bool {
     let t = text.trim();
+    if is_bare_numbered_section_heading(t) {
+        return true;
+    }
+    section_keyword_prefix(t).is_some_and(is_keyword_numbered_section_heading)
+}
+
+/// The enumerator-first half of [`is_numbered_section_heading`]: the number,
+/// or the roman numeral, is the line's own first token.
+fn is_bare_numbered_section_heading(t: &str) -> bool {
     let bytes = t.as_bytes();
     if bytes.is_empty() {
         return false;
@@ -1103,6 +1119,95 @@ pub(super) fn is_numbered_section_heading(text: &str) -> bool {
             .chars()
             .filter(|c| c.is_alphabetic())
             .all(|c| c.is_uppercase())
+}
+
+/// A leading section keyword is a word, not a preposition. Without a floor,
+/// `Op 3 MAART` and `In 5 STAPPEN` read as section numbering, because an
+/// all-caps remainder satisfies every other term. See #1608. ~keep
+const MIN_SECTION_KEYWORD_CHARS: usize = 3;
+
+/// Split a leading section keyword (`ARTIKEL`, `Appendix`, `Annex`, `Chapter`,
+/// `Artículo`, ...) off `t` and return what follows it.
+///
+/// Deliberately NOT a keyword list: enumerating them is endless and
+/// language-bound, and measured on GH#1608's reproducer a list would still have
+/// missed two of the five shapes. What identifies the form is its shape -- one
+/// capitalised alphabetic word standing in front of an enumerator -- while the
+/// enumerator and the case of the remainder do the discriminating. See #1608. ~keep
+fn section_keyword_prefix(t: &str) -> Option<&str> {
+    if !t.chars().next()?.is_uppercase() {
+        return None;
+    }
+    let word_end = t.find(char::is_whitespace)?;
+    let word = &t[..word_end];
+    if !word.chars().all(char::is_alphabetic) || word.chars().count() < MIN_SECTION_KEYWORD_CHARS {
+        return None;
+    }
+    Some(t[word_end..].trim_start())
+}
+
+/// Whether `rest` -- a line with its leading section keyword removed -- reads as
+/// a numbered section heading.
+fn is_keyword_numbered_section_heading(rest: &str) -> bool {
+    let Some(after_enumerator) = section_enumerator_end(rest) else {
+        return false;
+    };
+    let remainder = rest[after_enumerator..].trim_start_matches(['.', ')']).trim_start();
+    // `Artikel 12 van de wet is van toepassing.` is prose and must stay prose;
+    // `Appendix 1 Product list` is a heading. Keyword and enumerator are the same
+    // shape in both, so the case of the first letter after the enumerator is the
+    // only thing separating them. A bare enumerator keeps the stricter all-caps
+    // rule -- there the keyword is not there to vouch for it. See #1608. ~keep
+    match remainder.chars().find(|c| c.is_alphabetic()) {
+        None => true,
+        Some(first) => first.is_uppercase(),
+    }
+}
+
+/// Byte offset just past a leading enumerator in `rest`: arabic digits with
+/// optional `.`-separated levels, a roman numeral, or a single uppercase letter.
+///
+/// The enumerator must be terminated by end of line, `.`, `)` or a space, so
+/// `Article 7a` and `Annex IVX` do not read as enumerated. The single-letter arm
+/// exists for `Exhibit A` / `Annex B`, and is reachable only behind a keyword --
+/// a bare `A.` is far more often a list marker than a section number. ~keep
+fn section_enumerator_end(rest: &str) -> Option<usize> {
+    let bytes = rest.as_bytes();
+    if bytes.is_empty() {
+        return None;
+    }
+    let terminated = |end: usize| matches!(bytes.get(end), None | Some(b'.' | b')' | b' '));
+
+    let mut end = 0usize;
+    loop {
+        let digit_len = bytes[end..]
+            .iter()
+            .position(|b| !b.is_ascii_digit())
+            .unwrap_or(bytes.len() - end);
+        if digit_len == 0 {
+            break;
+        }
+        end += digit_len;
+        if bytes.get(end) == Some(&b'.') && bytes.get(end + 1).is_some_and(u8::is_ascii_digit) {
+            end += 1;
+        } else {
+            break;
+        }
+    }
+    if end > 0 {
+        return terminated(end).then_some(end);
+    }
+
+    let roman_chars: &[u8] = b"IVXLCDM";
+    let roman_end = bytes
+        .iter()
+        .position(|b| !roman_chars.contains(b))
+        .unwrap_or(bytes.len());
+    if roman_end > 0 && terminated(roman_end) && is_valid_roman(&rest[..roman_end]) {
+        return Some(roman_end);
+    }
+
+    (bytes[0].is_ascii_uppercase() && terminated(1)).then_some(1)
 }
 
 /// Check if text starts with a section number pattern (e.g., "1 ", "2.1 ", "A.", "III.").
@@ -3376,6 +3481,45 @@ mod numbered_section_heading_tests {
         assert!(!is_numbered_section_heading("1. Énumération 1"));
         assert!(!is_numbered_section_heading("12) apples and oranges"));
         assert!(!is_numbered_section_heading("1.\nÉnumération 1"));
+    }
+
+    /// GH#1608: a heading that puts a keyword in front of its number was invisible
+    /// to this predicate, which is the only boundary signal the paragraph grouper
+    /// has for a heading sharing font, weight and spacing with its neighbour.
+    #[test]
+    fn keyword_numbered_section_headings_are_headings() {
+        assert!(is_numbered_section_heading(
+            "ARTIKEL 1. TOEPASSELIJKHEID VAN DE INKOOPVOORWAARDEN"
+        ));
+        assert!(is_numbered_section_heading("Appendix 1 PRODUCT LIST"));
+        assert!(is_numbered_section_heading("Annex III SCOPE OF THE WORKS"));
+        // The enumeration is a letter, which the bare roman/arabic scan cannot read.
+        assert!(is_numbered_section_heading("Exhibit A PRODUCT LIST"));
+        // A single-level number with a MIXED-CASE tail, which a bare enumerator rejects.
+        assert!(is_numbered_section_heading("Appendix 1 Product list"));
+        assert!(is_numbered_section_heading("Chapter 1"));
+        assert!(is_numbered_section_heading("Artículo 5 CONDICIONES"));
+    }
+
+    /// The guard the widening must not breach: the same keyword and the same
+    /// enumerator shape occur in ordinary prose, and only the case of the word
+    /// after the enumerator separates them. GH#1608 page 8.
+    #[test]
+    fn prose_opening_with_a_keyword_and_a_number_is_not_a_heading() {
+        assert!(!is_numbered_section_heading("Artikel 12 van de wet is van toepassing."));
+        assert!(!is_numbered_section_heading("Article 7 of the contract applies here"));
+        assert!(!is_numbered_section_heading("Bijlage bij de overeenkomst"));
+        // `7a` is not a terminated enumerator.
+        assert!(!is_numbered_section_heading("Article 7a IS NOT ENUMERATED"));
+    }
+
+    /// `MIN_SECTION_KEYWORD_CHARS` is load-bearing, not decoration: a two-letter
+    /// preposition in front of a number and an all-caps tail satisfies every
+    /// other term of the keyword arm.
+    #[test]
+    fn a_short_word_before_a_number_is_not_a_section_keyword() {
+        assert!(!is_numbered_section_heading("Op 3 MAART"));
+        assert!(!is_numbered_section_heading("In 5 STAPPEN"));
     }
 
     #[test]

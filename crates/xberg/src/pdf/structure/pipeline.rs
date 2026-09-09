@@ -7281,6 +7281,118 @@ mod tests {
         );
     }
 
+    /// GH#1608: `ARTIKEL 1.` shares font, size, weight and leading with the part
+    /// header above it, so the numbered-heading predicate is the only boundary
+    /// signal available -- and it could not see a heading whose number is not the
+    /// first token. Asserted through `segments_to_paragraphs`, which runs the
+    /// grouper AND the continuation merge, because a split made by one is
+    /// routinely undone by the other.
+    #[test]
+    fn keyword_numbered_heading_splits_from_the_part_header_above_it() {
+        let part_header = SegmentData {
+            is_bold: true,
+            font_size: 12.0,
+            height: 12.0,
+            y: 700.0 - 12.0,
+            ..column_seg("ALGEMENE BEPALINGEN", 262.0, 71.0, 700.0)
+        };
+        let heading = SegmentData {
+            is_bold: true,
+            font_size: 12.0,
+            height: 12.0,
+            y: 683.0 - 12.0,
+            ..column_seg(
+                "ARTIKEL 1. TOEPASSELIJKHEID VAN DE INKOOPVOORWAARDEN",
+                72.0,
+                330.0,
+                683.0,
+            )
+        };
+
+        let paragraphs = segments_to_paragraphs(
+            vec![part_header, heading],
+            &[(12.0, None)],
+            &[],
+            &TextRepairWitnesses::default(),
+        );
+
+        assert_eq!(
+            paragraphs.len(),
+            2,
+            "the keyword-numbered heading must open its own element"
+        );
+        assert_eq!(paragraph_segment_text(&paragraphs[0]), "ALGEMENE BEPALINGEN");
+        assert_eq!(
+            paragraph_segment_text(&paragraphs[1]),
+            "ARTIKEL 1. TOEPASSELIJKHEID VAN DE INKOOPVOORWAARDEN"
+        );
+    }
+
+    /// GH#1608 page 9: with the predicate blind to the keyword form, a run of
+    /// such headings has no break signal at all and collapses into one element --
+    /// the exact failure the `starts_section` term exists to prevent.
+    #[test]
+    fn a_run_of_keyword_numbered_headings_does_not_collapse() {
+        let lines = [
+            "ARTIKEL 1. TOEPASSELIJKHEID",
+            "ARTIKEL 2. TOTSTANDKOMING",
+            "ARTIKEL 3. PRIJZEN",
+        ];
+        let segments = lines
+            .iter()
+            .enumerate()
+            .map(|(index, text)| {
+                let baseline = 700.0 - 17.0 * index as f32;
+                SegmentData {
+                    is_bold: true,
+                    font_size: 12.0,
+                    height: 12.0,
+                    y: baseline - 12.0,
+                    ..column_seg(text, 72.0, 180.0, baseline)
+                }
+            })
+            .collect();
+
+        let paragraphs = segments_to_paragraphs(segments, &[(12.0, None)], &[], &TextRepairWitnesses::default());
+
+        assert_eq!(paragraphs.len(), 3, "each heading in the run must be its own element");
+        for (index, expected) in lines.iter().enumerate() {
+            assert_eq!(paragraph_segment_text(&paragraphs[index]), *expected);
+        }
+    }
+
+    /// The negative control for the two tests above: prose that opens with the
+    /// same keyword and the same number must NOT gain a paragraph break, or the
+    /// widening would shred body text wherever a sentence starts `Artikel 12 ...`.
+    #[test]
+    fn prose_opening_with_a_keyword_and_a_number_keeps_its_paragraph() {
+        let first = SegmentData {
+            font_size: 12.0,
+            height: 12.0,
+            y: 700.0 - 12.0,
+            ..column_seg("Artikel 12 van de wet is van toepassing", 72.0, 240.0, 700.0)
+        };
+        let second = SegmentData {
+            font_size: 12.0,
+            height: 12.0,
+            y: 683.0 - 12.0,
+            ..column_seg("en dus geldt het volgende voor deze overeenkomst", 72.0, 250.0, 683.0)
+        };
+
+        let paragraphs = segments_to_paragraphs(
+            vec![first, second],
+            &[(12.0, None)],
+            &[],
+            &TextRepairWitnesses::default(),
+        );
+
+        assert_eq!(
+            paragraphs.len(),
+            1,
+            "prose beginning with a keyword and a number is not a heading"
+        );
+    }
+
     /// The wrap control for #1467: a numbered heading long enough to reach the
     /// column's right edge, continuing onto a second, unnumbered physical line,
     /// must stay ONE element -- splitting a heading from its own wrapped tail

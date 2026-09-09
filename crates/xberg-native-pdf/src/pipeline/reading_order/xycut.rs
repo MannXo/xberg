@@ -1945,14 +1945,28 @@ impl XYCutStrategy {
     }
 
     /// Sort indices in reading order (top-to-bottom, left-to-right).
+    ///
+    /// Uses [`crate::utils::row_aware_span_cmp`]'s row-banded baseline
+    /// comparator rather than a strict `bbox.top()` sort (GH#1600). A
+    /// subscript or superscript run shares its base run's baseline
+    /// (`bbox.y`) to within a fraction of a point but is drawn in a
+    /// visibly smaller font, so its `top()` (`y + height`) differs from
+    /// the base run's by roughly the height difference — several points,
+    /// comfortably more than any OTHER same-row cell's `top()` gap. A
+    /// strict `top()` sort therefore treats the subscript as a separate,
+    /// lower "line" and can insert an unrelated same-row cell between a
+    /// base glyph and its own subscript. `row_aware_span_cmp` quantizes Y
+    /// into `ROW_BAND_TOLERANCE_PT`-wide bands before comparing, so runs
+    /// sharing a baseline band stay ordered by X regardless of height. ~keep
     fn sort_indices(&self, all_spans: &[TextSpan], indices: &[usize]) -> Vec<usize> {
         let mut sorted: Vec<usize> = indices.to_vec();
         sorted.sort_by(|&a, &b| {
-            let y_cmp = crate::utils::safe_float_cmp(all_spans[b].bbox.top(), all_spans[a].bbox.top());
-            if y_cmp != std::cmp::Ordering::Equal {
-                return y_cmp;
-            }
-            crate::utils::safe_float_cmp(all_spans[a].bbox.left(), all_spans[b].bbox.left())
+            crate::utils::row_aware_span_cmp(
+                all_spans[a].bbox.y,
+                all_spans[a].bbox.x,
+                all_spans[b].bbox.y,
+                all_spans[b].bbox.x,
+            )
         });
         sorted
     }
@@ -2219,6 +2233,72 @@ mod tests {
         assert!(!groups.is_empty(), "Expected at least 1 group");
         let total_spans: usize = groups.iter().map(|g| g.len()).sum();
         assert_eq!(total_spans, 4, "Expected all 4 spans to be preserved");
+    }
+
+    /// GH#1600. A subscript run (shorter height, baseline dropped a
+    /// fraction of a point below its base run) must sort immediately after
+    /// its base run, not after a sibling cell in the next column whose
+    /// `top()` happens to land between them.
+    ///
+    /// Geometry lifted from the reporter's reproducer (`Q`/`HE`/`GJ`
+    /// row): base "Q" at y=612.13 h=11.59 (top=623.72), subscript "HE" at
+    /// y=611.50 h=7.34 (top=618.84 — baseline only 0.63pt below the base,
+    /// but top() differs by ~4.9pt because subscript glyphs are drawn in a
+    /// visibly smaller font), unit cell "GJ" in the next column at
+    /// y=612.13 h=11.59 (top=623.72, tied with the base). Sorting by
+    /// `top()` descending places GJ (tied top, lower x than nothing to its
+    /// left) ahead of HE, tearing "QHE" into "Q" ... "HE" with "GJ" wedged
+    /// between them. All three share one baseline band (`ROW_BAND_TOLERANCE_PT`
+    /// = 3.0pt covers the 0.63pt baseline gap easily), so a baseline-aware,
+    /// row-banded comparator keeps Q and HE adjacent. ~keep
+    #[test]
+    fn test_subscript_sorts_immediately_after_base_not_after_next_column() {
+        let strategy = XYCutStrategy::new();
+        let spans = vec![
+            make_span_text(206.74, 612.13, 8.20, 11.59, "Q", 11.59),
+            make_span_text(212.76, 611.50, 6.83, 7.34, "HE", 7.34),
+            make_span_text(253.33, 612.13, 12.08, 11.59, "GJ", 11.59),
+        ];
+
+        let groups = strategy.partition_region(&spans);
+        let texts: Vec<&str> = groups.iter().flatten().map(|s| s.text.as_str()).collect();
+        assert_eq!(
+            texts,
+            vec!["Q", "HE", "GJ"],
+            "subscript HE must stay adjacent to base Q, ahead of the next column's GJ"
+        );
+    }
+
+    /// GH#1600 negative control. Two ordinary body-text lines at a real
+    /// line-height apart (14pt — typical single-spaced 12pt body leading)
+    /// must NOT be treated as one row band and interleaved by X, even
+    /// though they land in the same tiny (`n < min_spans_for_split`)
+    /// region that reaches `sort_indices`. `ROW_BAND_TOLERANCE_PT` is
+    /// 3.0pt; a 14pt gap is 4.6x that, so the two lines fall into
+    /// different bands and stay in top-to-bottom, row-major order. This
+    /// guards the fix above from overreaching: the row-band tolerance is
+    /// narrow enough to keep a subscript with its base (0.63pt baseline
+    /// gap) without also merging two genuinely separate lines whose
+    /// columns would otherwise look identical to the subscript case (each
+    /// side narrower than `MIN_RESULT_WIDTH_PT`, so no column split is
+    /// found and both lines land in the same `sort_indices` call). ~keep
+    #[test]
+    fn test_row_band_does_not_merge_two_distinct_lines() {
+        let strategy = XYCutStrategy::new();
+        let spans = vec![
+            make_span_text(10.0, 200.0, 50.0, 10.0, "A1", 10.0),
+            make_span_text(100.0, 200.0, 50.0, 10.0, "A2", 10.0),
+            make_span_text(10.0, 186.0, 50.0, 10.0, "B1", 10.0),
+            make_span_text(100.0, 186.0, 50.0, 10.0, "B2", 10.0),
+        ];
+
+        let groups = strategy.partition_region(&spans);
+        let texts: Vec<&str> = groups.iter().flatten().map(|s| s.text.as_str()).collect();
+        assert_eq!(
+            texts,
+            vec!["A1", "A2", "B1", "B2"],
+            "two distinct 14pt-apart lines must stay in row-major order, not interleave by X"
+        );
     }
 
     #[test]

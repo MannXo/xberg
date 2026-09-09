@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- PDF reading order no longer tears a subscript off the symbol it names. Spans were ordered by the
+  top of their bounding box, but a subscript is drawn 35-40% smaller than its base, so its top sits
+  several points lower even though its baseline is a fraction of a point away. An unrelated span
+  from the next column could sort between a base run and its own subscript, and the symbol the
+  subscript names no longer existed anywhere in the output. Ordering now quantises the baseline
+  into row bands before comparing horizontally, which is what every other caller of that comparator
+  already did (GH#1600).
+- PDF table detection no longer bridges two separate tables across the graphics-free gap between
+  them. A cell was built from intersection points alone, so a section heading printed in that gap
+  was absorbed into one of the tables as a single-cell row. A candidate cell now also requires a
+  drawn vertical rule spanning its own Y-range on both sides. The span tolerance is load-bearing:
+  at the tighter X-axis value, rows of a table whose rules are inset by a few points are dropped
+  (GH#1601).
+- PDF two-column detection no longer loses the page's split to a hanging-number indent. When any
+  span straddled a correctly detected gutter, the split was replaced outright by the midpoint of
+  the widest whole-page whitespace corridor — on a hanging-number layout, the indent between the
+  numbers and the text. The reorder then hoisted every clause number out of its clause. A
+  relocation is now rejected when it would move the split more than a quarter of the page width,
+  which leaves every legitimate corridor move in the corpus intact (GH#1603).
+- PDF paragraph grouping no longer splits a numbered heading that wraps onto a shorter second line.
+  The wrap exemption compared the two lines' right edges, but a heading fills its column on its
+  FIRST line and the continuation is whatever is left over, so the metric was anti-correlated with
+  the answer. A lowercase opening now also exempts the pair (GH#1605).
+- PDF paragraph grouping now recognises a heading whose number is not its first token — `ARTIKEL 1.`,
+  `Chapter 1`, `Appendix 1`, `Annex III`, `Exhibit A`. The numbered-heading predicate is the only
+  boundary signal available when a heading shares font, size, weight and leading with its
+  neighbour, so a heading it could not see was welded onto the line above it, and a run of such
+  headings collapsed into a single element. Recognition is by shape, not by a keyword list: one
+  capitalised word standing in front of an enumerator. Prose that opens the same way — `Artikel 12
+  van de wet is van toepassing.` — stays prose, because behind a keyword the text after the
+  enumerator must still be capitalised (GH#1608).
+- OCR no longer adopts a markdown table rebuild that loses content. The rebuilt page replaced the
+  original whenever it was merely non-empty, so a rebuild that dropped text still won. The rebuild
+  is now rejected, with a warning naming both word counts, when it retains fewer words than the
+  content it would replace (GH#1599).
+- PaddleOCR's default `model_tier` of `mobile` now resolves to the pp-ocrv6 `small` detection model
+  (9.9 MB) rather than `medium` (62 MB). A tier named `mobile` silently loading the largest
+  available model made a 21-page document take over ten minutes. `small` and `medium` share the
+  same 18,708-character dictionary, so recognition coverage is unchanged. The documented model
+  sizes were also wrong and have been corrected (GH#1602).
+- The PHP extension now loads on Debian 12 and other distributions built against GCC 12. The Linux
+  publish runners ship GCC 13+, and the extension picked up a `GLIBCXX_3.4.31` symbol from their
+  libstdc++ while Debian 12 provides at most `GLIBCXX_3.4.30`. libstdc++ is now linked statically;
+  the highest glibc requirement was already below Debian 12's (GH#1606).
+
 ## [1.1.3] - 2026-09-08
 
 ### Added

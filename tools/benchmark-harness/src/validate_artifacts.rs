@@ -591,7 +591,11 @@ fn validate_results(
         }
         require(
             !enforce_ocr_status || result.ocr_status == expected_ocr,
-            format!("{}: result {index} OCR status mismatch", path.display()),
+            format!(
+                "{}: result {index} OCR status mismatch: expected {expected_ocr:?}, got {:?}",
+                path.display(),
+                result.ocr_status
+            ),
         )?;
         require(
             result.iterations.len() == iterations,

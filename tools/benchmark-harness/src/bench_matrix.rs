@@ -163,13 +163,14 @@ impl Cohort {
 
     /// Whether every result in this cohort's artifacts is expected to report OCR as *used*.
     ///
-    /// Only the scanned-PDF cohort qualifies. The image cohort still runs with OCR enabled
-    /// (`ocr_enabled` in its manifest), but xberg treats OCR as the intrinsic text path for a
-    /// bare image rather than a fallback, so its results report `OcrStatus::NotUsed` — the same
-    /// bucket a native cohort lands in. Requiring `Used` here would make every image result fail
-    /// validation.
+    /// The scanned-PDF cohort and the image cohort both qualify: a bare image has no text layer
+    /// to fall back to, so OCR is its only text path, and the native adapter's
+    /// `determine_ocr_status` reports `Used` for it (checking the extraction config when the
+    /// image extractor has overwritten `FormatMetadata` to `Image`), matching the scanned-PDF
+    /// `FormatMetadata::Ocr` case. Requiring `NotUsed` here made every genuine image OCR result
+    /// fail validation (xberg-io/xberg#1604).
     pub fn expects_ocr(self) -> bool {
-        matches!(self, Cohort::Ocr)
+        matches!(self, Cohort::Ocr | Cohort::Images)
     }
 
     /// Whether this cohort's xberg cells include the rendered-page `layout` pipeline variant in

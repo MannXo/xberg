@@ -919,7 +919,6 @@ traineddata = "traineddata"
 "crates/xberg/src/embeddings/mod.rs" = ["file-too-long", "function-too-long", "too-many-parameters"]
 "crates/xberg/src/engine/extract_impl.rs" = ["file-too-long", "function-too-long", "too-many-parameters"]
 "crates/xberg/src/engine/extract_impl/tests.rs" = ["file-too-long"]
-"crates/xberg/src/engine/structured/finalize.rs" = ["too-many-parameters"]
 "crates/xberg/src/engine/structured/prompts.rs" = ["nesting-too-deep", "too-many-parameters"]
 "crates/xberg/src/extraction/archive/mod.rs" = ["file-too-long"]
 "crates/xberg/src/extraction/derive.rs" = ["cyclomatic-complexity", "file-too-long", "function-too-long"]
@@ -3307,6 +3306,7 @@ types = [
   "xberg::engine::structured::prompts::BuiltPrompt",
 
   "xberg::engine::structured::finalize::FinalizedOutput",
+  "xberg::engine::structured::finalize::CitationInputs",
 
   "xberg::engine::parsed::ParsedDocument",
 ]
@@ -3330,7 +3330,8 @@ functions = [
   "fuse",
   "build_prompt",
   "build_vision_fallback_prompt",
-  # Composes validate_and_merge into fuse; returns the excluded FinalizedOutput.
+  # Composes validate_and_merge into fuse; takes the excluded CitationInputs and
+  # returns the excluded FinalizedOutput.
   "merge_and_cite",
   # Wraps build_vision_fallback_prompt with the threshold decision; returns
   # Option<BuiltPrompt>, and BuiltPrompt is already excluded above.

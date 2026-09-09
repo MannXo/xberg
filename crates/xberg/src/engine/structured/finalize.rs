@@ -36,29 +36,35 @@ pub struct FinalizedOutput {
     pub per_batch_errors: Vec<String>,
 }
 
+/// The citation-fusion half of a [`merge_and_cite`] call: the extracted context
+/// a merged value is fused against, and the policy governing how.
+pub struct CitationInputs<'a> {
+    /// Extracted OCR elements used for citation fusion.
+    pub ocr_elements: &'a [Value],
+    /// Extracted element metadata used for citation fusion.
+    pub element_metadata: &'a [Value],
+    /// Whether to wrap fields in citation envelopes.
+    pub emit_citations: bool,
+    /// Minimum text-similarity score (`0.0`-`1.0`) for an OCR element to be
+    /// accepted as the source of a field value.
+    pub match_threshold: f64,
+    /// Confidence recorded on a successfully fused field.
+    pub fused_confidence: f64,
+}
+
 /// Validate and merge `raw_responses` against `schema_value`, then fuse the
-/// merged output with `ocr_elements` / `element_metadata`.
+/// merged output with the context and policy in `citation_inputs`.
 ///
 /// # Arguments
 /// * `raw_responses` - Vision-LLM JSON responses (already parsed as `serde_json::Value`)
 /// * `schema_value` - JSON Schema (Draft 2020-12) for validation
 /// * `merge_mode` - Merge strategy applied across validated batches
-/// * `ocr_elements` - Extracted OCR elements used for citation fusion
-/// * `element_metadata` - Extracted element metadata used for citation fusion
-/// * `emit_citations` - Whether to wrap fields in citation envelopes
-/// * `match_threshold` - Minimum text-similarity score (`0.0`-`1.0`) for an OCR
-///   element to be accepted as the source of a field value
-/// * `fused_confidence` - Confidence recorded on a successfully fused field
-#[allow(clippy::too_many_arguments)]
+/// * `citation_inputs` - Citation-fusion context and policy, see [`CitationInputs`]
 pub fn merge_and_cite(
     raw_responses: Vec<Value>,
     schema_value: &Value,
     merge_mode: MergeMode,
-    ocr_elements: &[Value],
-    element_metadata: &[Value],
-    emit_citations: bool,
-    match_threshold: f64,
-    fused_confidence: f64,
+    citation_inputs: CitationInputs<'_>,
 ) -> FinalizedOutput {
     let merged = schema::validate_and_merge(raw_responses, schema_value, merge_mode);
 
@@ -67,11 +73,11 @@ pub fn merge_and_cite(
         structured_output_flat,
     } = citations::fuse(
         merged.merged,
-        ocr_elements,
-        element_metadata,
-        emit_citations,
-        match_threshold,
-        fused_confidence,
+        citation_inputs.ocr_elements,
+        citation_inputs.element_metadata,
+        citation_inputs.emit_citations,
+        citation_inputs.match_threshold,
+        citation_inputs.fused_confidence,
     );
 
     FinalizedOutput {
@@ -115,11 +121,13 @@ mod tests {
             vec![batch1, batch2],
             &schema,
             MergeMode::ObjectMerge,
-            &[ocr],
-            &[],
-            true,
-            MATCH_THRESHOLD,
-            FUSED_CONFIDENCE,
+            CitationInputs {
+                ocr_elements: &[ocr],
+                element_metadata: &[],
+                emit_citations: true,
+                match_threshold: MATCH_THRESHOLD,
+                fused_confidence: FUSED_CONFIDENCE,
+            },
         );
 
         assert_eq!(result.outcome, Outcome::Success);
@@ -160,11 +168,13 @@ mod tests {
             vec![batch1, batch2],
             &schema,
             MergeMode::ObjectMerge,
-            &[],
-            &[],
-            false,
-            MATCH_THRESHOLD,
-            FUSED_CONFIDENCE,
+            CitationInputs {
+                ocr_elements: &[],
+                element_metadata: &[],
+                emit_citations: false,
+                match_threshold: MATCH_THRESHOLD,
+                fused_confidence: FUSED_CONFIDENCE,
+            },
         );
 
         assert_eq!(result.outcome, Outcome::PartialSuccess);
@@ -197,11 +207,13 @@ mod tests {
             vec![batch1],
             &schema,
             MergeMode::ObjectMerge,
-            &[],
-            &[],
-            true,
-            MATCH_THRESHOLD,
-            FUSED_CONFIDENCE,
+            CitationInputs {
+                ocr_elements: &[],
+                element_metadata: &[],
+                emit_citations: true,
+                match_threshold: MATCH_THRESHOLD,
+                fused_confidence: FUSED_CONFIDENCE,
+            },
         );
 
         assert_eq!(result.outcome, Outcome::SchemaInvalid);

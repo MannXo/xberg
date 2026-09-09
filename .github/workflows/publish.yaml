@@ -3997,13 +3997,20 @@ jobs:
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
           owner: xberg-io
 
+      # --ref MUST be the release tag, not github.ref_name. pub.dev's OIDC gate only mints a
+      # token for a 'tag' refType, so dispatching on a branch fails at the child's first step
+      # with ref_type='branch'. github.ref_name happens to BE the tag on a `release: published`
+      # trigger, which is why this read as correct for as long as that was the only path. It is
+      # the branch on a workflow_dispatch, so `republish=true` -- the supported recovery for a
+      # partially-published release -- silently lost the Dart publish. prepare.outputs.tag is
+      # the resolved tag on every trigger. ~keep
       - name: Dispatch publish-pubdev workflow
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           gh workflow run publish-pubdev.yaml \
-            --ref ${{ github.ref_name }} \
+            --ref ${{ needs.prepare.outputs.tag }} \
             -f ref=${{ needs.prepare.outputs.checkout_ref }}
 
   publish-zig:

@@ -790,6 +790,12 @@ fn test_no_decompression_trace_when_images_disabled() {
 /// the native path the decompression was unbounded.  The OCR path was never
 /// covered by a test, so a regression disabling decompression for
 /// `ocr_inline_images=true` would be invisible.
+// Gated on `ocr`, NOT on `ocr-pipeline`: `ocr = ["ocr-pipeline", ...]`, so the
+// pipeline feature can be on with no backend registered, and this test then fails
+// with `OCR backend 'tesseract' not registered` rather than being skipped. Without
+// any gate it fails a step earlier, at config validation, on every `pdf`-only leg.
+// Both reds read exactly like a real regression. ~keep
+#[cfg(feature = "ocr")]
 #[test]
 fn test_ocr_inline_images_enters_decompression_path() {
     use xberg::PdfConfig;

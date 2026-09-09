@@ -10,10 +10,13 @@
 //! Run with:
 //!   cargo test -p xberg --features office --test issue_69_styled_html_slide_section
 
-// `HtmlOutputConfig`, `HtmlTheme` and `ExtractionConfig::html_output` are all gated on the
-// `html` feature, so without this guard the whole test target fails to compile under the
-// default feature set and takes `cargo clippy --all-targets` down with it. ~keep
-#![cfg(feature = "html")]
+// `html`: `HtmlOutputConfig`, `HtmlTheme` and `ExtractionConfig::html_output` are all
+// gated on it, so without this guard the whole test target fails to compile under the
+// default feature set and takes `cargo clippy --all-targets` down with it.
+// `office`: the fixture is an ODP. That requirement was documented in the header above
+// but not enforced, and an unenforced requirement fails as a red run rather than as a
+// skip whenever someone builds a narrower feature set. ~keep
+#![cfg(all(feature = "html", feature = "office"))]
 
 mod helpers;
 use helpers::{extract_uri_document_blocking, get_test_documents_dir};

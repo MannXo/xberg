@@ -74,6 +74,23 @@ pub(super) fn merge_continuation_paragraphs(paragraphs: &mut Vec<PdfParagraph>) 
             .is_some_and(|(prev_segment, next_segment)| {
                 super::pipeline::heading_wraps_onto(prev_segment, next_segment)
             });
+        // `heading_wraps_onto` alone cannot decide this. It compares the two lines'
+        // RIGHT EDGES, but its own doc comment states the correct rule -- a wrapping
+        // heading "fills its column before continuing below" -- and that is a property
+        // of the FIRST line. The continuation is by definition whatever is left over,
+        // so its right edge is arbitrary and the two coincide only by accident.
+        // Measured on GH#1605's reproducer (12pt, x=72), the metric is ANTI-correlated
+        // with the answer: the page that must merge differs by 58.7pt while the page
+        // that must split differs by 28.5pt, so no tolerance separates them.
+        //
+        // A lowercase opening is the signal that actually tracks a wrap: a heading
+        // continuing mid-phrase resumes in lowercase, while unrelated text following a
+        // heading starts capitalised. `continuation_signal` above already treats it as
+        // a continuation cue, so accepting it here is consistent rather than novel.
+        // Kept as an OR beside the geometric test, never a replacement -- widening the
+        // exemption can only merge more, so it cannot regress a pair that merges today
+        // (GH#1467's right-edge case included). ~keep
+        let heading_wrap_exempt = boundary_is_heading_wrap || starts_with_lowercase_continuation(&next);
         let should_merge = both_body
             && fonts_compatible
             && bold_compatible
@@ -82,7 +99,7 @@ pub(super) fn merge_continuation_paragraphs(paragraphs: &mut Vec<PdfParagraph>) 
             && same_rotation
             && vertical_gap_compatible
             && !next_starts_section
-            && (!current_starts_section || boundary_is_heading_wrap);
+            && (!current_starts_section || heading_wrap_exempt);
 
         if should_merge {
             current.text.clear();
@@ -596,5 +613,107 @@ mod tests {
         merge_continuation_paragraphs(&mut paragraphs);
         assert_eq!(paragraphs.len(), 1);
         assert!(paragraphs[0].text.is_empty());
+    }
+
+    /// GH#1605. A numbered heading wrapping onto a SHORT continuation line was
+    /// split in two, losing the section number from the second half.
+    ///
+    /// `heading_wraps_onto` gates the merge on the two lines' right edges landing
+    /// within 2.0 font-sizes of each other. Its own doc comment states the correct
+    /// rule -- a wrapping heading "fills its column before continuing below" --
+    /// but that is a property of the FIRST line; the code instead measures the
+    /// SECOND line's length, and a continuation is by definition whatever is left
+    /// over. Measured from the reproducer at 12pt Helvetica-Bold, x=72:
+    ///
+    ///   page 1  |307.5 - 248.8| = 58.7pt  must MERGE  (tolerance 24pt -> split)
+    ///   page 2  |307.5 - 325.5| = 18.0pt  must MERGE  (tolerance 24pt -> merge)
+    ///   page 3  |374.2 - 402.7| = 28.5pt  must SPLIT  (tolerance 24pt -> split)
+    ///
+    /// The page that must merge has a LARGER edge difference than the page that
+    /// must split, so the metric is anti-correlated with the answer and no
+    /// tolerance can separate the three. ~keep
+    fn wrapped_heading_paragraph(text: &str, x: f32, right_edge: f32, baseline_y: f32) -> PdfParagraph {
+        use crate::pdf::hierarchy::SegmentData;
+        let segments = vec![SegmentData {
+            text: text.to_string(),
+            x,
+            y: baseline_y,
+            width: right_edge - x,
+            height: 12.0,
+            font_size: 12.0,
+            is_bold: true,
+            is_italic: false,
+            is_monospace: false,
+            baseline_y,
+            rotation_degrees: 0.0,
+            assigned_role: None,
+        }];
+        let lines = vec![super::super::types::PdfLine {
+            segments,
+            baseline_y,
+            dominant_font_size: 12.0,
+            is_bold: true,
+            is_monospace: false,
+        }];
+        let word_count = PdfParagraph::compute_word_count("", &lines);
+        PdfParagraph {
+            text: String::new(),
+            lines,
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: true,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            layout_region_path: None,
+            caption_for: None,
+            block_bbox: None,
+            word_count,
+        }
+    }
+
+    #[test]
+    fn numbered_heading_wrapping_onto_a_short_line_stays_one_paragraph() {
+        let mut paragraphs = vec![
+            wrapped_heading_paragraph("2.4 Aandachtspunten ten behoeve van de", 72.0, 307.5, 700.0),
+            wrapped_heading_paragraph("watertechnische installatie", 72.0, 248.8, 684.0),
+        ];
+        merge_continuation_paragraphs(&mut paragraphs);
+        assert_eq!(
+            paragraphs.len(),
+            1,
+            "GH#1605: a heading wrapping onto a short continuation must stay one paragraph; \
+             the continuation starts lowercase and carries no section number of its own"
+        );
+    }
+
+    #[test]
+    fn numbered_heading_wrapping_onto_a_long_line_stays_one_paragraph() {
+        let mut paragraphs = vec![
+            wrapped_heading_paragraph("2.4 Aandachtspunten ten behoeve van de", 72.0, 307.5, 700.0),
+            wrapped_heading_paragraph("watertechnische installatie en de meting", 72.0, 325.5, 684.0),
+        ];
+        merge_continuation_paragraphs(&mut paragraphs);
+        assert_eq!(
+            paragraphs.len(),
+            1,
+            "GH#1605 control: this case already merged and must keep merging"
+        );
+    }
+
+    #[test]
+    fn numbered_heading_followed_by_unrelated_capitalised_text_still_splits() {
+        let mut paragraphs = vec![
+            wrapped_heading_paragraph("1.1.1 Pictogrammen in het installatievoorschrift", 72.0, 374.2, 700.0),
+            wrapped_heading_paragraph("VOORZICHTIG / BELANGRIJK Procedures die schade", 72.0, 402.7, 684.0),
+        ];
+        merge_continuation_paragraphs(&mut paragraphs);
+        assert_eq!(
+            paragraphs.len(),
+            2,
+            "GH#1605 negative control: unrelated capitalised text after a heading must NOT be absorbed"
+        );
     }
 }

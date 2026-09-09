@@ -257,12 +257,22 @@ const V6_REC_MODELS: &[V6RecModelDefinition] = &[
 #[cfg(paddle_ocr)]
 const V6_UNIFIED_FAMILIES: &[&str] = &["english", "chinese", "latin"];
 
-/// Maps a configured tier to an effective PP-OCRv6 tier. Legacy v5 tiers (`server`/`mobile`)
-/// and any unknown value fall back to `medium`, the v6 default.
+/// Maps a configured tier to an effective PP-OCRv6 tier.
+///
+/// `mobile` maps to `small`, not `medium`. `mobile` is the v5 name for the lightweight tier
+/// (4.7MB detection) and is this config's default, so resolving it to v6 `medium` (62MB) handed
+/// every caller who never set `model_tier` the heaviest available model under a name that
+/// promises the lightest — the cause of GH#1602, where a 21-page document took over ten minutes.
+/// `small` (9.9MB detection) is the nearest v6 analogue and, unlike `tiny`, keeps the full
+/// 18,708-char CJK+Latin+JA/KO recognition dictionary, so the remap cannot silently narrow which
+/// scripts a caller can read. `server` keeps mapping to `medium`: it is the v5 name for the
+/// high-accuracy tier, so the largest v6 model is what it asks for. Unknown values also resolve
+/// to `medium` rather than guessing. ~keep
 #[cfg(paddle_ocr)]
 fn effective_v6_tier(tier: &str) -> &str {
     match tier {
         "medium" | "small" | "tiny" => tier,
+        "mobile" => "small",
         _ => "medium",
     }
 }
@@ -1164,7 +1174,10 @@ mod tests {
         assert_eq!(effective_v6_tier("medium"), "medium");
         assert_eq!(effective_v6_tier("small"), "small");
         assert_eq!(effective_v6_tier("tiny"), "tiny");
-        assert_eq!(effective_v6_tier("mobile"), "medium");
+        // GH#1602: `mobile` is the DEFAULT model_tier and the v5 name for the lightweight
+        // tier, so it must not resolve to the heaviest v6 model. `small` keeps the full
+        // recognition dictionary; `tiny` would narrow it to ~zh/en. ~keep
+        assert_eq!(effective_v6_tier("mobile"), "small");
         assert_eq!(effective_v6_tier("server"), "medium");
         assert_eq!(effective_v6_tier("bogus"), "medium");
     }

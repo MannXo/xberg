@@ -887,10 +887,14 @@ mod tests {
                 "{}: Sceptre ORT presence must match includes_sceptre_ort()",
                 cohort.as_str()
             );
+            // The pdfium backend is a separate dimension from the OCR/layout pipeline grid this
+            // formula models: native adds 4 `xberg-*-baseline-pdfium` cells via
+            // `xberg_pdfium_entries`, which `native_contract_includes_every_pdfium_workflow_cell`
+            // covers exactly. Counting them here made native read 12 against a predicted 8. ~keep
             let xberg_required = contract
                 .matrix
                 .iter()
-                .filter(|entry| entry.framework.starts_with("xberg-"))
+                .filter(|entry| entry.framework.starts_with("xberg-") && !entry.framework.ends_with("-pdfium"))
                 .count();
             // 4 cells (md/plain x single/batch) per enabled pipeline: baseline, +layout,
             // +baseline-paddle, +layout-paddle (the last only when layout is also present).

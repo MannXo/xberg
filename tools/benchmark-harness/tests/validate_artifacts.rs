@@ -1442,6 +1442,43 @@ fn rejects_aggregate_with_wrong_file_type_sample_count() {
 }
 
 #[test]
+fn accepts_aggregate_with_a_zero_overlap_sample() {
+    // ~keep A zero-overlap result is `success == false` with `ErrorKind::ZeroOverlap`, so it is
+    // absent from `successful_sample_count` while still counted in `total_sample_count`
+    // (`total_sample_count: results.len()`). The rest of the harness already treats it as a
+    // framework fault -- `CountsBuilder::record` folds it into `framework_fault_total` and
+    // `accountable_sample_count` includes it -- but `validate_bucket` omitted it from its sum, so
+    // any bucket holding one failed the count invariant. That is what rejected the otherwise
+    // complete benchmark run 34391134650 on `mineru:markdown:single`. Built through the real
+    // aggregation path rather than by editing counts, so the arithmetic under test is the
+    // arithmetic production computes.
+    let contract = Cohort::Native.contract();
+    let optional_framework = contract
+        .matrix
+        .iter()
+        .find(|entry| entry.optional)
+        .map(aggregate_framework_name)
+        .expect("native cohort has an optional entry");
+    let aggregate = build_aggregate_with(
+        &contract,
+        Cohort::Native,
+        |_| true,
+        |results| {
+            let target = results
+                .iter_mut()
+                .find(|result| result.framework == optional_framework && result.success)
+                .expect("optional framework has a successful result to reclassify");
+            target.success = false;
+            target.error_kind = ErrorKind::ZeroOverlap;
+            target.error_message = Some("extraction produced no overlap with the reference".to_string());
+        },
+    );
+    let (_root, path) = write_aggregate(&aggregate);
+    validate(&aggregate_args(Cohort::Native, path))
+        .expect("a zero-overlap sample is an accountable framework fault, not an unaccounted sample");
+}
+
+#[test]
 fn rejects_aggregate_row_when_not_an_object() {
     let contract = Cohort::Native.contract();
     let aggregate = build_aggregate(&contract, Cohort::Native);

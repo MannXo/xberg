@@ -761,7 +761,11 @@ fn validate_raw_artifacts(
 /// can span several file types, so the caller also checks each bucket against the cohort's exact
 /// per-extension fixture counts. ~keep
 fn validate_bucket(bucket: &PerformancePercentiles, key: &str, allow_failures: bool) -> Result<usize> {
-    let accountable_failures = bucket.framework_errors + bucket.timeouts + bucket.empty_content;
+    // `zero_overlap` is a framework fault like the other three: `CountsBuilder::record` folds it
+    // into `framework_fault_total` and `accountable_sample_count` includes it, but this sum
+    // omitted it, so any bucket holding one failed the invariant against a `total_sample_count`
+    // that counts every result. ~keep
+    let accountable_failures = bucket.framework_errors + bucket.timeouts + bucket.empty_content + bucket.zero_overlap;
     let infrastructure_failures = bucket.harness_errors + bucket.config_setup_errors;
     let failures = accountable_failures + infrastructure_failures;
     require(

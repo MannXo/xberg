@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.1.6] - 2026-09-10
 
 ### Fixed
 
@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   any slide exists, so they were absent from the output entirely. Outline text is now attributed
   to its slide by persist order and merged in, skipping any line the slide's own drawing already
   carries so a title drawn on the canvas is not duplicated (GH#1612).
+
+- The documented install versions for Java, Kotlin Android, Swift, Zig and the spring-ai
+  integration no longer lag the release. These snippets sit outside `task version:sync`, which
+  covers the generated API-reference badges but not hand-authored install directives, so they
+  had been telling users to install 1.1.3 (GH#1593 covers the same class of staleness in
+  `test_apps`, which is still open).
 
 ## [1.1.5] - 2026-09-10
 

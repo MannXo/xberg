@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.5] - 2026-09-10
+
+### Fixed
+
+- The Java binding compiles again. A method returning `Option<Vec<u8>>` — `Registry.sampleBytes`
+  is the only one today — was generated declaring `Optional<byte[]>` while returning a bare
+  `byte[]`, which javac rejects. 1.1.4 therefore published no Java artifact at all, and the
+  spring-ai integration was blocked waiting on it. Fixed upstream in alef 0.85.12; this release
+  regenerates on it.
+
 ## [1.1.4] - 2026-09-09
 
 ### Fixed

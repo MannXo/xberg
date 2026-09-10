@@ -6,7 +6,7 @@
 # for. 0.83.0 additionally fixes the php/napi/pyo3 mirror defaults, the elixir bytes
 # hop and the typescript/wasm mock-url builder that this repo's e2e legs were red on.
 # ~keep
-alef_version = "0.85.11"
+alef_version = "0.85.12"
 languages = [
   "python",
   "node",
@@ -409,7 +409,14 @@ exclude = [
 # since 4b6453ab18, and only fails the hook on a regen that actually changes it,
 # which is why it was missed when the sibling Xberg.swift was excluded. This is
 # generator output, not a size regression to fix. ~keep
-file-safety-exclude = ["packages/swift/Sources/RustBridge/xberg-swift.swift"]
+file-safety-exclude = [
+  "packages/swift/Sources/RustBridge/xberg-swift.swift",
+  # alef generates one API reference page per language from the whole public surface, so
+  # these grow with the API and have no split option. api-rust.md crossed the 500 KiB limit
+  # on the 1.1.4 regen and api-c.md is 12 KiB behind it. Generator output, not a size
+  # regression. ~keep
+  "docs-site/src/content/docs/reference/api-*.md",
+]
 
 # Opt-in comment-removal sweep. Preserve doc comments (rustdoc is required on
 # public items), TODO/FIXME (actionable), and SAFETY/license markers. Generated
@@ -5407,7 +5414,7 @@ path = "../../packages/swift"
 path = "../../packages/zig"
 
 [crates.e2e.registry.packages.zig]
-hash = "xberg-v1.1.4-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+hash = "xberg-v1.1.5-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 [crates.e2e.packages.wasm]
 name = "@xberg-io/xberg-wasm"

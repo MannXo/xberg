@@ -673,8 +673,8 @@ struct PageInput {
     heuristic_segments: Vec<SegmentData>,
     /// Layout hints for this page, if layout detection was run.
     page_hints: Option<Vec<LayoutHint>>,
-    /// Bounding boxes of tables that were successfully extracted for this page.
-    table_bboxes: Vec<crate::types::BoundingBox>,
+    /// Footprint and cell text of tables successfully extracted for this page.
+    table_bboxes: Vec<TableCoverage>,
     /// Whether native semantic classification should be preserved while layout
     /// hints continue to control reading order and record region provenance.
     preserve_native_semantics: bool,
@@ -4050,37 +4050,87 @@ fn deduplicate_identical_tables(tables: &mut Vec<crate::types::Table>) {
     });
 }
 
-fn table_bboxes_by_page(tables: &[crate::types::Table]) -> ahash::AHashMap<usize, Vec<crate::types::BoundingBox>> {
-    let mut bboxes_by_page: ahash::AHashMap<usize, Vec<crate::types::BoundingBox>> = ahash::AHashMap::new();
-    for table in tables {
-        if let Some(bbox) = table.bounding_box {
-            bboxes_by_page
-                .entry(table.page_number.saturating_sub(1) as usize)
-                .or_default()
-                .push(bbox);
-        }
-    }
-    bboxes_by_page
+/// A table's footprint on a page together with the text its grid actually carries.
+///
+/// The two are recorded side by side because suppression needs both: geometry alone
+/// cannot tell whether the grid REPRESENTS a run it happens to cover. See
+/// [`filter_segments_by_table_bboxes`]. ~keep
+#[derive(Clone)]
+struct TableCoverage {
+    bbox: crate::types::BoundingBox,
+    /// Every cell's text, whitespace-collapsed and lowercased, joined by `\u{1}`.
+    /// Built once per table so the per-segment test is a substring search.
+    cell_text: String,
 }
 
-/// Filter out segments that overlap >=50% with any table bounding box.
+/// Collapse runs of whitespace and lowercase, so a cell that joined several printed
+/// runs still contains each run's normalized form as a substring.
+fn normalize_for_table_coverage(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()
+}
+
+fn table_bboxes_by_page(tables: &[crate::types::Table]) -> ahash::AHashMap<usize, Vec<TableCoverage>> {
+    let mut coverage_by_page: ahash::AHashMap<usize, Vec<TableCoverage>> = ahash::AHashMap::new();
+    for table in tables {
+        if let Some(bbox) = table.bounding_box {
+            // `cells` is authoritative when populated, but a table can reach here
+            // carrying only rendered `markdown` (layout-sourced tables, and the
+            // overlap-preference merge, both produce that shape). Falling back to the
+            // markdown keeps suppression working for those instead of silently
+            // disabling it, which would emit their contents twice. ~keep
+            let cell_text = if table.cells.iter().any(|row| !row.is_empty()) {
+                table
+                    .cells
+                    .iter()
+                    .flat_map(|row| row.iter())
+                    .map(|cell| normalize_for_table_coverage(cell))
+                    .collect::<Vec<_>>()
+                    .join("\u{1}")
+            } else {
+                normalize_for_table_coverage(&table.markdown.replace(['|', '-'], " "))
+            };
+            coverage_by_page
+                .entry(table.page_number.saturating_sub(1) as usize)
+                .or_default()
+                .push(TableCoverage { bbox, cell_text });
+        }
+    }
+    coverage_by_page
+}
+
+/// Filter out segments a table both COVERS and CARRIES.
 ///
-/// Segments with zero area or empty text are always kept.
-fn filter_segments_by_table_bboxes(
-    segments: Vec<SegmentData>,
-    table_bboxes: &[crate::types::BoundingBox],
-) -> Vec<SegmentData> {
-    if table_bboxes.is_empty() {
+/// Suppression exists so text a table already renders is not emitted a second time as
+/// prose. Geometry alone was the whole test, and that is unsound: a reconstructed grid
+/// need not span every printed column inside its own bounding box, and the runs in the
+/// columns it left out were dropped from the prose flow without ever reaching a cell.
+/// They were deleted from the document -- not in a cell, not in an element, nowhere.
+/// Measured on GH#1616: a four-column fault-finding grid was reconstructed with two
+/// columns over a bbox spanning all four, and 26 words vanished across two pages.
+///
+/// The text test restores the invariant that a bounding box cannot delete content the
+/// grid does not represent: a covered run is dropped only when some cell actually
+/// carries it. Matching is on whitespace-collapsed, lowercased text so a cell that
+/// joined several printed runs still matches each of them, which is the normal case --
+/// cell assembly merges runs, so requiring equality would suppress almost nothing and
+/// reintroduce the duplication this filter exists to prevent.
+///
+/// Segments with zero area or empty text are always kept. ~keep
+fn filter_segments_by_table_bboxes(segments: Vec<SegmentData>, tables: &[TableCoverage]) -> Vec<SegmentData> {
+    if tables.is_empty() {
         return segments;
     }
     segments
         .into_iter()
         .filter(|seg| {
             let seg_area = seg.width * seg.height;
-            if seg_area <= 0.0 || seg.text.trim().is_empty() {
+            let seg_text = seg.text.trim();
+            if seg_area <= 0.0 || seg_text.is_empty() {
                 return true;
             }
-            !table_bboxes.iter().any(|bb| {
+            let normalized = normalize_for_table_coverage(seg_text);
+            !tables.iter().any(|table| {
+                let bb = &table.bbox;
                 let inter_left = seg.x.max(bb.x0 as f32);
                 let inter_right = (seg.x + seg.width).min(bb.x1 as f32);
                 let inter_bottom = seg.y.max(bb.y0 as f32);
@@ -4089,7 +4139,7 @@ fn filter_segments_by_table_bboxes(
                     return false;
                 }
                 let inter_area = (inter_right - inter_left) * (inter_top - inter_bottom);
-                inter_area / seg_area >= 0.5
+                inter_area / seg_area >= 0.5 && table.cell_text.contains(&normalized)
             })
         })
         .collect()
@@ -7002,7 +7052,7 @@ mod tests {
     fn emitted_table_still_suppresses_covered_text() {
         use crate::core::config::layout::TableOverlapPreference;
 
-        let native_tables = vec![ov_table(1, (0.0, 0.0, 100.0, 100.0), "| value |")];
+        let native_tables = vec![ov_table(1, (0.0, 0.0, 100.0, 100.0), "| duplicated table text |")];
         let emitted_tables = prepare_emitted_tables(&native_tables, Vec::new(), TableOverlapPreference::Content);
         let bboxes_by_page = table_bboxes_by_page(&emitted_tables);
         let segment = SegmentData {
@@ -7746,6 +7796,83 @@ mod tests {
     }
 
     /// Helper: one segment of a hanging-indent column, 11pt on an 11pt line.
+    /// GH#1616: a reconstructed grid need not span every printed column inside its own
+    /// bounding box. The runs in the columns it left out were dropped from the prose flow
+    /// and never reached a cell, so they were deleted from the document.
+    ///
+    /// The shape measured on the reporter's page 51: a four-column fault-finding grid
+    /// (cause / `Nee` / `Ja` / remedy) reconstructed with two columns over a bbox spanning
+    /// all four, x 48.00 .. 555.24.
+    #[test]
+    fn a_table_bbox_does_not_delete_text_its_grid_leaves_out() {
+        let coverage = vec![TableCoverage {
+            bbox: crate::types::BoundingBox {
+                x0: 48.0,
+                y0: 312.48,
+                x1: 555.24,
+                y1: 405.28,
+            },
+            cell_text: table_cell_text(&[
+                "Ja  Ja",
+                "Controleer de ontsteekpenafstand. Controleer de afstelling, zie § 7.10 Gas-luchtregeling.",
+            ]),
+        }];
+        let segments = vec![
+            column_seg("Ja", 300.0, 12.0, 380.0),
+            column_seg("Controleer de ontsteekpenafstand.", 340.0, 180.0, 380.0),
+            column_seg("Onjuiste ontsteekafstand.", 52.0, 140.0, 380.0),
+            column_seg("Nee", 250.0, 20.0, 366.0),
+            column_seg("Zwakke vonk.", 52.0, 70.0, 340.0),
+        ];
+
+        let kept: Vec<String> = filter_segments_by_table_bboxes(segments, &coverage)
+            .into_iter()
+            .map(|seg| seg.text)
+            .collect();
+
+        assert_eq!(
+            kept,
+            vec![
+                "Onjuiste ontsteekafstand.".to_string(),
+                "Nee".to_string(),
+                "Zwakke vonk.".to_string(),
+            ],
+            "runs the grid does not carry must survive; the two it does carry are suppressed"
+        );
+    }
+
+    /// The other half of the same invariant, and the reason the geometric test cannot
+    /// simply be dropped: text a table DOES carry must still be suppressed, or every
+    /// table's contents are emitted twice.
+    #[test]
+    fn a_table_still_suppresses_the_prose_copy_of_its_own_cells() {
+        let coverage = vec![TableCoverage {
+            bbox: crate::types::BoundingBox {
+                x0: 48.0,
+                y0: 300.0,
+                x1: 500.0,
+                y1: 400.0,
+            },
+            cell_text: table_cell_text(&["Mogelijke oorzaken:", "Oplossing:"]),
+        }];
+        let segments = vec![
+            column_seg("Mogelijke oorzaken:", 52.0, 100.0, 380.0),
+            column_seg("Oplossing:", 300.0, 60.0, 380.0),
+        ];
+        assert!(
+            filter_segments_by_table_bboxes(segments, &coverage).is_empty(),
+            "a covered run the grid carries is still suppressed"
+        );
+    }
+
+    fn table_cell_text(cells: &[&str]) -> String {
+        cells
+            .iter()
+            .map(|cell| normalize_for_table_coverage(cell))
+            .collect::<Vec<_>>()
+            .join("\u{1}")
+    }
+
     fn column_seg(text: &str, x: f32, width: f32, baseline_y: f32) -> SegmentData {
         SegmentData {
             text: text.to_string(),
@@ -9028,11 +9155,14 @@ where new shares are issued;";
         assert_eq!(
             process(
                 Some(400.0),
-                vec![crate::types::BoundingBox {
-                    x0: 0.0,
-                    y0: 0.0,
-                    x1: 50.0,
-                    y1: 50.0,
+                vec![TableCoverage {
+                    bbox: crate::types::BoundingBox {
+                        x0: 0.0,
+                        y0: 0.0,
+                        x1: 50.0,
+                        y1: 50.0,
+                    },
+                    cell_text: String::new(),
                 }],
                 true,
             ),

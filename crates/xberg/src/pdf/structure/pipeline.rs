@@ -1759,6 +1759,12 @@ const INLINE_STYLE_MAX_OVERLAP_FONT_FACTOR: f32 = 0.15;
 /// because the next word did not fit -- without also treating a long heading
 /// followed by a much shorter, unrelated line as a wrap. See #1467.
 const HEADING_WRAP_RIGHT_EDGE_TOLERANCE_FONT_FACTOR: f32 = 2.0;
+/// How closely a wrapped heading's continuation must resume at the same left edge
+/// as the line it continues, in font-sizes. Measured on GH#1615's reproducer the
+/// two align exactly (both x 83.64) while the body line that must NOT merge sits
+/// 35.4pt away at the margin, so the separation is wide and the tolerance only has
+/// to absorb sub-pixel drift. ~keep
+const HEADING_HANGING_INDENT_LEFT_EDGE_TOLERANCE_FONT_FACTOR: f32 = 0.5;
 
 /// Detect paragraph-break y-positions from horizontal whitespace bands.
 ///
@@ -2015,7 +2021,10 @@ fn blocks_to_paragraphs(
             let follows_section = starts_new_line
                 && current_is_single_visual_line
                 && super::classify::is_numbered_section_heading(&visual_line_texts[prev_idx])
-                && !heading_wraps_onto(prev, line);
+                && !heading_wraps_onto(prev, line)
+                && !current_lines
+                    .first()
+                    .is_some_and(|heading_start| heading_continuation_is_hanging_indent(heading_start, prev, line));
             let crossed_gap = paragraph_gap_ys.iter().any(|&gap_y| {
                 let previous_baseline = prev.upright_baseline();
                 let current_baseline = line.upright_baseline();
@@ -2156,6 +2165,60 @@ pub(super) fn heading_wraps_onto(prev: &SegmentData, line: &SegmentData) -> bool
 /// heading stops hundreds of points short of the body prose it was being welded
 /// into. A lowercase opening alone cannot tell those apart -- both continue in
 /// lowercase -- which is why it must not be the whole test. See #1609. ~keep
+/// Whether `line` is the continuation of a numbered heading set with a HANGING
+/// INDENT: the number at the left margin, the title starting to its right, and a
+/// title too long for one line resuming at the title's own left edge.
+///
+/// Two things must hold, and the second alone is not enough. `heading_start` is the
+/// first segment of the heading's visual line and `prev` its last, so
+/// `prev` starting to the right of `heading_start` is what establishes that this
+/// heading HAS a hanging indent at all. Only then does `line` sharing `prev`'s left
+/// edge mean "the title continues" rather than "the next line happens to be at the
+/// same margin".
+///
+/// Measured on GH#1615's reproducer, where the wrap and the body that must NOT merge
+/// are identical on every other signal this grouper checks -- same font, same weight,
+/// same line pitch:
+///
+/// ```text
+/// 5.7.3                                     x 48.24            the number, at the margin
+/// Roof terminal combined duct vertical and  x 83.64  y 774.96  the title, indented 35.4pt
+/// twin pipe duct vertical                   x 83.64  y 762.24  the wrap -- aligns with the title
+/// Appliance category: C33                   x 48.24  y 745.08  the body -- returns to the margin
+/// ```
+///
+/// This is why the right-edge test in [`heading_wraps_onto`] cannot stand alone: a
+/// wrap's LAST line is short by definition -- being short is what makes it the last
+/// line -- so its right edge never matches the line it continues, and every two-line
+/// heading looked like a heading handing off to unrelated content.
+///
+/// The hanging-indent requirement is what keeps #1467 working: there the heading is a
+/// single segment at the margin and the callout beneath it is at the same margin, so
+/// `heading_start` and `prev` coincide, no indent is established, and the pair still
+/// splits. `starts_section` is evaluated independently of all this, so a following
+/// line that is itself a numbered heading breaks regardless. ~keep
+pub(super) fn heading_continuation_is_hanging_indent(
+    heading_start: &SegmentData,
+    prev: &SegmentData,
+    line: &SegmentData,
+) -> bool {
+    if !prev.has_same_rotation(line) || !prev.has_same_rotation(heading_start) {
+        return false;
+    }
+    if !prev.font_size.is_finite() || !line.font_size.is_finite() {
+        return false;
+    }
+    let (heading_left, _) = heading_start.upright_advance_extent();
+    let (prev_left, _) = prev.upright_advance_extent();
+    let (line_left, _) = line.upright_advance_extent();
+    if !heading_left.is_finite() || !prev_left.is_finite() || !line_left.is_finite() {
+        return false;
+    }
+    let tolerance =
+        HEADING_HANGING_INDENT_LEFT_EDGE_TOLERANCE_FONT_FACTOR * prev.font_size.max(line.font_size).max(1.0);
+    prev_left - heading_left > tolerance && (prev_left - line_left).abs() <= tolerance
+}
+
 pub(super) fn heading_fills_column(prev: &SegmentData, next_right_edge: f32) -> bool {
     if !prev.font_size.is_finite() || !next_right_edge.is_finite() {
         return false;
@@ -7402,6 +7465,77 @@ mod tests {
         assert_eq!(
             paragraph_segment_text(&paragraphs[1]),
             "ARTIKEL 1. TOEPASSELIJKHEID VAN DE INKOOPVOORWAARDEN"
+        );
+    }
+
+    /// GH#1615. A numbered heading whose title does not fit on one line is set with
+    /// a hanging indent: the number at the margin, the title to its right, and the
+    /// overflow resuming at the TITLE's left edge. `follows_section` closed the
+    /// element after the first line anyway, because `heading_wraps_onto` compares
+    /// RIGHT edges and a wrap's last line is short by definition.
+    ///
+    /// Geometry from the reporter's page 1, verbatim (PDF user space):
+    ///
+    /// ```text
+    /// 5.7.3                                     x 48.24
+    /// Roof terminal combined duct vertical and  x 83.64  y 774.96
+    /// twin pipe duct vertical                   x 83.64  y 762.24
+    /// ```
+    #[test]
+    fn a_wrapped_numbered_heading_keeps_its_second_line() {
+        let segments = vec![
+            SegmentData {
+                is_bold: true,
+                font_size: 11.04,
+                ..column_seg("5.7.3", 48.24, 30.0, 774.96)
+            },
+            SegmentData {
+                is_bold: true,
+                font_size: 11.04,
+                ..column_seg("Roof terminal combined duct vertical and", 83.64, 211.0, 774.96)
+            },
+            SegmentData {
+                is_bold: true,
+                font_size: 11.04,
+                ..column_seg("twin pipe duct vertical", 83.64, 114.0, 762.24)
+            },
+        ];
+        let paragraphs = blocks_to_paragraphs(segments, &[], &[]);
+        assert_eq!(paragraphs.len(), 1, "the heading and its own wrap are one element");
+        assert_eq!(
+            paragraph_segment_text(&paragraphs[0]),
+            "5.7.3 Roof terminal combined duct vertical and twin pipe duct vertical"
+        );
+    }
+
+    /// GH#1615's own control, page 3 of the same reproducer. Identical heading,
+    /// identical fonts, identical line pitch -- the ONLY difference is that the
+    /// following line starts at the margin (x 48.24) rather than the title's left
+    /// edge (x 83.64), because it is body text and not a wrap. It must still split.
+    #[test]
+    fn a_numbered_heading_followed_by_margin_aligned_body_still_splits() {
+        let segments = vec![
+            SegmentData {
+                is_bold: true,
+                font_size: 11.04,
+                ..column_seg("5.7.5", 48.24, 30.0, 774.96)
+            },
+            SegmentData {
+                is_bold: true,
+                font_size: 11.04,
+                ..column_seg("Roof terminal combined duct vertical and", 83.64, 211.0, 774.96)
+            },
+            SegmentData {
+                is_bold: true,
+                font_size: 11.04,
+                ..column_seg("The appliance category is C33 for this duct.", 48.24, 216.0, 762.24)
+            },
+        ];
+        let paragraphs = blocks_to_paragraphs(segments, &[], &[]);
+        assert_eq!(paragraphs.len(), 2, "body text at the margin is not the heading's wrap");
+        assert_eq!(
+            paragraph_segment_text(&paragraphs[0]),
+            "5.7.5 Roof terminal combined duct vertical and"
         );
     }
 

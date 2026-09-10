@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- PDF de-hyphenation no longer welds a compound whose own hyphen falls on a line break. Two
+  sites decide whether a trailing hyphen survives; only one consulted the lexical evidence, so
+  `long-term`, `cost-effective` and `antigen-presenting` came out as `longterm`, `costeffective`
+  and `antigenpresenting` — tokens that do not exist, and so unreachable by any lexical search.
+  The assembly site now asks the same question the paragraph site already asked, weighing both
+  the static compound list and the witnesses collected from the document itself. A hyphen the
+  wrap genuinely inserted is still removed (GH#1613).
+
 ## [1.1.5] - 2026-09-10
 
 ### Fixed

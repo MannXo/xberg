@@ -53,6 +53,7 @@ default = [
     "layout-detection",
     "chunking-tokenizers",
     "tree-sitter",
+    "redaction",
 ]
 pdf-surface = ["xberg/pdf"]
 # Gates `--pdf-backend pdfium` (#700): PdfBackend::Pdfium always exists once
@@ -156,6 +157,10 @@ ner-onnx = ["legacy-base", "xberg/ner-onnx"]
 # summarization, so these stages actually run in `--features all` containers.
 ner-llm = ["legacy-base", "xberg/ner-llm"]
 summarization = ["legacy-base", "xberg/summarization"]
+# Redaction was absent from every CLI build, so a `redaction` block in a CLI config was
+# silently dropped, the same failure #1336 describes for NER. Pure Rust, so it also ships
+# in `binstall`. ~keep
+redaction = ["legacy-base", "xberg/redaction"]
 summarization-llm = ["legacy-base", "xberg/summarization-llm"]
 # Audio transcription is intentionally opt-in because it adds the Whisper/ORT
 # inference stack. The `all` release and container profile enables it so the CLI
@@ -179,6 +184,7 @@ binstall = [
     "liter-llm",
     "chunking-tokenizers",
     "tree-sitter",
+    "redaction",
 ]
 # `binstall` plus Candle's pure-Rust VLM OCR (TrOCR + PaddleOCR-VL). These two
 # backends run CPU inference with NO ONNX/native deps (unlike `candle-vlm-ocr`,

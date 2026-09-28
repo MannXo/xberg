@@ -56,7 +56,18 @@ impl PostProcessor for RedactionProcessor {
         );
 
         let limits = config.security_limits.clone().unwrap_or_default();
-        redact_with_limits(result, redaction_config, &limits).await
+        // The pipeline keeps a `Validation` error as a processing warning and returns
+        // the document as extracted, which would ship the text this run was asked to
+        // redact.
+        redact_with_limits(result, redaction_config, &limits)
+            .await
+            .map_err(|err| match err {
+                crate::XbergError::Validation { .. } => crate::XbergError::Plugin {
+                    message: err.to_string(),
+                    plugin_name: self.name().to_string(),
+                },
+                other => other,
+            })
     }
 
     fn processing_stage(&self) -> ProcessingStage {

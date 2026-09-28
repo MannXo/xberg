@@ -394,3 +394,26 @@ fn should_redact_through_the_post_processor_within_the_limit() {
 
     assert_eq!(document.content, format!("{MASK} met Blorp."));
 }
+
+#[cfg(feature = "tokio-runtime")]
+#[tokio::test]
+async fn should_fail_the_extraction_rather_than_return_unredacted_text() {
+    // A processor's `Validation` error is otherwise kept as a processing warning,
+    // and the document comes back exactly as extracted.
+    let config = ExtractionConfig {
+        redaction: Some(with_findings(vec![span_finding("PERSON", 0, 400)])),
+        ..Default::default()
+    };
+    let input = xberg::ExtractInput::from_bytes(b"Zarnak Quorlim met Blorp.".to_vec(), "text/plain", None);
+
+    let outcome = xberg::extract(input, &config).await;
+
+    let error = match outcome {
+        Ok(output) => panic!(
+            "extraction must fail, got {:?}",
+            output.results.iter().map(|result| &result.content).collect::<Vec<_>>()
+        ),
+        Err(error) => error,
+    };
+    assert!(error.to_string().contains("RedactionConfig.findings[0]"), "{error}");
+}

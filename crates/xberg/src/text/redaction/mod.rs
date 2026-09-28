@@ -13,6 +13,7 @@
 //! and records only replacements that were actually applied.
 
 pub mod engine;
+mod external;
 pub mod patterns;
 #[cfg(feature = "redaction-rehydrate")]
 pub mod rehydration;
@@ -21,5 +22,6 @@ pub mod strategy;
 #[cfg(feature = "redaction-rehydrate")]
 pub use engine::redact_capturing_rehydration_map;
 pub use engine::{redact, redact_with_entities};
+pub use external::parse_external_findings;
 #[cfg(feature = "redaction-rehydrate")]
 pub use rehydration::{RehydrationMap, SubjectMatch, decrypt_map, encrypt_map, find_subject, forget_subject};

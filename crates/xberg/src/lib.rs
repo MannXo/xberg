@@ -250,13 +250,13 @@ pub use core::config::{
     AccelerationConfig, BedrockConfig, CallMode, CaptioningConfig, ChunkClassificationConfig,
     ChunkClassificationDefinition, ChunkSizing, ChunkerType, ChunkingConfig, ConcurrencyConfig, ContentFilterConfig,
     CredentialProviderConfig, CsvConfig, EmailConfig, EmbeddingConfig, EmbeddingModelType, ExecutionProviderType,
-    ExtractInput, ExtractInputKind, ExtractionConfig, ExtractionErrorItem, ExtractionResult, ExtractionSummary,
-    FileExtractionConfig, GeoJsonExtractionConfig, ImageExtractionConfig, JupyterCellRendering,
+    ExternalRedactionFinding, ExtractInput, ExtractInputKind, ExtractionConfig, ExtractionErrorItem, ExtractionResult,
+    ExtractionSummary, FileExtractionConfig, GeoJsonExtractionConfig, ImageExtractionConfig, JupyterCellRendering,
     LanguageDetectionConfig, LlmBudgetConfig, LlmCacheConfig, LlmConfig, LlmProviderConfig, LlmRateLimitConfig,
     MergeMode, MimeDetectionPolicy, NerBackendKind, NerConfig, OcrConfig, OutputFormat, PageClassificationConfig,
-    PageConfig, PostProcessorConfig, RedactionConfig, RedactionPattern, RedactionTerm, RerankerConfig, RerankerHead,
-    RerankerModelType, StructuredExtractionConfig, SummarizationConfig, TableChunkingMode, TokenReductionOptions,
-    TranslationConfig, UrlExtractionConfig, UrlExtractionMode,
+    PageConfig, PostProcessorConfig, RedactionConfig, RedactionOffsetEncoding, RedactionPattern, RedactionTerm,
+    RerankerConfig, RerankerHead, RerankerModelType, StructuredExtractionConfig, SummarizationConfig,
+    TableChunkingMode, TokenReductionOptions, TranslationConfig, UrlExtractionConfig, UrlExtractionMode,
 };
 pub use core::config::{
     LateInteractionConfig, LateInteractionModelType, SparseEmbeddingConfig, SparseEmbeddingModelType,

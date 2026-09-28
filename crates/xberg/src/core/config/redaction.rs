@@ -10,6 +10,7 @@ use crate::Result;
 use crate::types::redaction::{PiiCategory, RedactionStrategy};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 /// Configuration for the redaction post-processor.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -52,6 +53,93 @@ pub struct RedactionConfig {
     /// at config-construction time via [`RedactionConfig::validate`].
     #[serde(default)]
     pub custom_patterns: Vec<RedactionPattern>,
+    /// Findings produced by an external content-inspection engine (Presidio,
+    /// AWS Comprehend, ...) over this document's extracted text.
+    ///
+    /// Each finding's literal value is redacted at every occurrence in every
+    /// textual field, surfacing as `PiiCategory::Custom(label)`. Unlike
+    /// [`ner`](Self::ner) labels, finding labels need no allowlist: the caller
+    /// supplied them explicitly.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub findings: Vec<ExternalRedactionFinding>,
+    /// JSON array or JSON Lines file of findings, loaded when redaction runs
+    /// and merged with [`findings`](Self::findings). Not supported on
+    /// `wasm32`, which has no filesystem.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "api", schema(value_type = Option<String>))]
+    pub findings_path: Option<PathBuf>,
+    /// How a finding's `start` / `end` count into `content`. Only consulted
+    /// for findings without `text`.
+    #[serde(default)]
+    pub findings_offset_encoding: RedactionOffsetEncoding,
+}
+
+/// One finding reported by an external content-inspection engine.
+///
+/// Unknown fields are ignored, so an engine's raw output can be passed as is.
+/// Presidio's `entity_type` and AWS Comprehend's `Type`, `Text`,
+/// `BeginOffset`, `EndOffset` and `Score` are accepted as aliases.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
+pub struct ExternalRedactionFinding {
+    /// Engine category, surfaced as `PiiCategory::Custom(label)`.
+    #[serde(alias = "entity_type", alias = "Type")]
+    pub label: String,
+    /// Literal value to redact. When absent, it is read from `content` at
+    /// `start..end` under [`RedactionConfig::findings_offset_encoding`].
+    #[serde(default, alias = "Text", skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    /// Start offset (inclusive) into `content`.
+    #[serde(default, alias = "BeginOffset", skip_serializing_if = "Option::is_none")]
+    pub start: Option<u32>,
+    /// End offset (exclusive) into `content`.
+    #[serde(default, alias = "EndOffset", skip_serializing_if = "Option::is_none")]
+    pub end: Option<u32>,
+    /// Engine confidence in `[0.0, 1.0]`. Validated, not used for filtering.
+    #[serde(default, alias = "Score", skip_serializing_if = "Option::is_none")]
+    pub score: Option<f32>,
+}
+
+impl ExternalRedactionFinding {
+    pub(crate) fn validate(&self, location: &str) -> Result<()> {
+        let invalid = |reason: &str| Err(crate::XbergError::validation(format!("{location}: {reason}")));
+        if self.label.trim().is_empty() {
+            return invalid("label is empty");
+        }
+        if let (Some(start), Some(end)) = (self.start, self.end)
+            && start >= end
+        {
+            return invalid(&format!("start {start} is not before end {end}"));
+        }
+        match &self.text {
+            Some(text) if text.trim().is_empty() => return invalid("text is empty"),
+            Some(_) => {}
+            None if self.start.is_none() || self.end.is_none() => {
+                return invalid("needs either text or both start and end");
+            }
+            None => {}
+        }
+        if let Some(score) = self.score
+            && !(score.is_finite() && (0.0..=1.0).contains(&score))
+        {
+            return invalid(&format!("score must be between 0.0 and 1.0, got {score}"));
+        }
+        Ok(())
+    }
+}
+
+/// Unit that an external finding's `start` / `end` offsets count in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum RedactionOffsetEncoding {
+    /// UTF-8 byte offsets.
+    Utf8Bytes,
+    /// Unicode scalar value (code point) offsets, as Presidio reports them.
+    #[default]
+    UnicodeCodePoints,
+    /// UTF-16 code unit offsets.
+    Utf16CodeUnits,
 }
 
 fn default_preserve_offsets() -> bool {
@@ -139,6 +227,9 @@ impl Default for RedactionConfig {
             preserve_offsets: true,
             custom_terms: Vec::new(),
             custom_patterns: Vec::new(),
+            findings: Vec::new(),
+            findings_path: None,
+            findings_offset_encoding: RedactionOffsetEncoding::default(),
         }
     }
 }
@@ -151,6 +242,9 @@ impl RedactionConfig {
     /// the caller can reject the config before the redaction pipeline runs.
     /// Pure terms (regex-escaped) cannot fail to compile, but the function
     /// still rejects empty values to avoid degenerate zero-length matches.
+    /// Inline [`findings`](Self::findings) are checked for shape here; their
+    /// offsets, and anything loaded from `findings_path`, are resolved when
+    /// redaction runs.
     pub fn validate(&self) -> Result<()> {
         for term in &self.custom_terms {
             if term.value.is_empty() {
@@ -178,6 +272,15 @@ impl RedactionConfig {
                     pattern.label
                 )));
             }
+        }
+        for (index, finding) in self.findings.iter().enumerate() {
+            finding.validate(&format!("RedactionConfig.findings[{index}]"))?;
+        }
+        #[cfg(target_arch = "wasm32")]
+        if self.findings_path.is_some() {
+            return Err(crate::XbergError::validation(
+                "RedactionConfig.findings_path is not supported on wasm32; pass findings inline".to_string(),
+            ));
         }
         Ok(())
     }

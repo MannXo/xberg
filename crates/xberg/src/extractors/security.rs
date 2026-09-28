@@ -94,6 +94,13 @@ pub struct SecurityLimits {
     // `Option<usize>` maps cleanly to None/nil/null/undefined everywhere, so the field now
     // generates instead of being skipped.
     pub max_pages: Option<usize>,
+
+    /// Maximum number of external findings a redaction run accepts, inline and
+    /// from `RedactionConfig::findings_path` combined (10,000).
+    ///
+    /// Each finding becomes a matcher run over every textual field, so the
+    /// count bounds the redaction pass's work.
+    pub max_redaction_findings: usize,
 }
 
 impl Default for SecurityLimits {
@@ -109,6 +116,7 @@ impl Default for SecurityLimits {
             max_xml_depth: 1024,
             max_table_cells: 100_000,
             max_pages: None,
+            max_redaction_findings: 10_000,
         }
     }
 }

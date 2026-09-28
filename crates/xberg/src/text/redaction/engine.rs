@@ -28,12 +28,14 @@ use std::collections::HashSet;
 
 use crate::Result;
 use crate::core::config::redaction::RedactionConfig;
+use crate::extractors::security::SecurityLimits;
 use crate::types::ExtractedDocument;
 use crate::types::entity::{Entity, EntityCategory};
 use crate::types::metadata::FormatMetadata;
 use crate::types::redaction::{PiiCategory, RedactionFinding, RedactionReport};
 use crate::types::revisions::{DiffLine, RevisionAnchor};
 
+use super::external::compile_external_findings;
 use super::patterns::{PatternMatch, scan_text};
 use super::strategy::{TokenCounter, apply_strategy};
 
@@ -50,7 +52,17 @@ const MAX_BLOCK_NESTING_DEPTH: usize = 32;
 /// Run pattern redaction (and optional NER-driven redaction) over `result` and
 /// rewrite every textual field. Populates `result.redaction_report`.
 pub async fn redact(result: &mut ExtractedDocument, config: &RedactionConfig) -> Result<()> {
-    redact_counted(result, config).await.map(|_counter| ())
+    redact_with_limits(result, config, &SecurityLimits::default()).await
+}
+
+/// [`redact`] with the caller's security limits, which bound the external
+/// findings accepted.
+pub(crate) async fn redact_with_limits(
+    result: &mut ExtractedDocument,
+    config: &RedactionConfig,
+    limits: &SecurityLimits,
+) -> Result<()> {
+    redact_counted(result, config, limits).await.map(|_counter| ())
 }
 
 /// Like [`redact`], additionally returning the token to original-text map for
@@ -64,7 +76,7 @@ pub async fn redact_capturing_rehydration_map(
     result: &mut ExtractedDocument,
     config: &RedactionConfig,
 ) -> Result<super::rehydration::RehydrationMap> {
-    let counter = redact_counted(result, config).await?;
+    let counter = redact_counted(result, config, &SecurityLimits::default()).await?;
     Ok(counter.rehydration_map())
 }
 
@@ -84,14 +96,20 @@ pub fn redact_with_entities(
     entities: &[Entity],
 ) -> Result<()> {
     config.validate()?;
-    redact_pass(result, config, entities);
+    let external_terms = compile_external_findings(&result.content, config, &SecurityLimits::default())?;
+    redact_pass(result, config, entities, &external_terms);
     Ok(())
 }
 
 /// Shared body for [`redact`] and the map-capturing variant: runs the full
 /// pass and hands back the token counter it used.
-async fn redact_counted(result: &mut ExtractedDocument, config: &RedactionConfig) -> Result<TokenCounter> {
+async fn redact_counted(
+    result: &mut ExtractedDocument,
+    config: &RedactionConfig,
+    limits: &SecurityLimits,
+) -> Result<TokenCounter> {
     config.validate()?;
+    let external_terms = compile_external_findings(&result.content, config, limits)?;
 
     #[cfg(feature = "ner")]
     let entities: Vec<Entity> = match &config.ner {
@@ -101,11 +119,16 @@ async fn redact_counted(result: &mut ExtractedDocument, config: &RedactionConfig
     #[cfg(not(feature = "ner"))]
     let entities: Vec<Entity> = Vec::new();
 
-    Ok(redact_pass(result, config, &entities))
+    Ok(redact_pass(result, config, &entities, &external_terms))
 }
 
 /// Rewrite every text-bearing field on `result` and populate its audit report.
-fn redact_pass(result: &mut ExtractedDocument, config: &RedactionConfig, entities: &[Entity]) -> TokenCounter {
+fn redact_pass(
+    result: &mut ExtractedDocument,
+    config: &RedactionConfig,
+    entities: &[Entity],
+    external_terms: &[(PiiCategory, regex::Regex)],
+) -> TokenCounter {
     let active = active_categories(config);
     let categories: Vec<PiiCategory> = active.iter().cloned().collect();
     let custom_regexes = compile_custom(config);
@@ -116,6 +139,7 @@ fn redact_pass(result: &mut ExtractedDocument, config: &RedactionConfig, entitie
         config,
         custom_regexes: &custom_regexes,
         ner_terms: &ner_terms,
+        external_terms,
         counter: TokenCounter::new(),
         findings: Vec::new(),
     };
@@ -143,6 +167,7 @@ struct RedactionPass<'a> {
     config: &'a RedactionConfig,
     custom_regexes: &'a [(String, regex::Regex)],
     ner_terms: &'a [(PiiCategory, regex::Regex)],
+    external_terms: &'a [(PiiCategory, regex::Regex)],
     counter: TokenCounter,
     findings: Vec<RedactionFinding>,
 }
@@ -160,6 +185,12 @@ impl RedactionPass<'_> {
 
         let detected = self.ner_terms.iter().map(|(category, regex)| (category.clone(), regex));
         matches.extend(scan_regexes(text, detected));
+
+        let external = self
+            .external_terms
+            .iter()
+            .map(|(category, regex)| (category.clone(), regex));
+        matches.extend(scan_regexes(text, external));
 
         if !self.config.categories.is_empty() {
             let requested = &self.config.categories;
@@ -960,7 +991,7 @@ fn redactable_category(category: &EntityCategory, allowed_custom: &HashSet<Strin
 /// case-sensitive on purpose: a case-insensitive match on a short name would
 /// redact ordinary words ("Bill" would eat every "bill"), and destroying the
 /// document is not an acceptable price for redacting it.
-fn literal_regex(mention: &str) -> Option<regex::Regex> {
+pub(super) fn literal_regex(mention: &str) -> Option<regex::Regex> {
     let escaped = regex::escape(mention);
     let prefix = if mention.chars().next().is_some_and(is_word_char) {
         r"\b"

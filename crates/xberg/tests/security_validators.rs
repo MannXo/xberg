@@ -36,6 +36,7 @@ fn tight_limits() -> SecurityLimits {
         // No fixture in this file is a PDF, so the page cap is left at the
         // production default rather than dialled down like the others.
         max_pages: None,
+        max_redaction_findings: 10_000,
     }
 }
 

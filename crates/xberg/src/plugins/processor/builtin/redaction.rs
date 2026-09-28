@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{Plugin, PostProcessor, ProcessingStage, register_post_processor};
-use crate::text::redaction::redact;
+use crate::text::redaction::engine::redact_with_limits;
 use crate::types::ExtractedDocument;
 
 /// Redaction post-processor.
@@ -55,7 +55,8 @@ impl PostProcessor for RedactionProcessor {
             "running redaction pipeline"
         );
 
-        redact(result, redaction_config).await
+        let limits = config.security_limits.clone().unwrap_or_default();
+        redact_with_limits(result, redaction_config, &limits).await
     }
 
     fn processing_stage(&self) -> ProcessingStage {

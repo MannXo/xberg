@@ -776,6 +776,8 @@ fn main() -> Result<()> {
                 validate_output_dir(dir)?;
             }
             overrides.validate()?;
+            #[cfg(feature = "redaction")]
+            let overrides = overrides.read_redaction_findings_stdin(stdin)?;
 
             let mut config = load_config(config_path, !no_config_discovery)?;
             apply_json_overrides(&mut config, config_json, config_json_base64)?;
@@ -803,6 +805,8 @@ fn main() -> Result<()> {
                 validate_output_dir(dir)?;
             }
             overrides.validate()?;
+            #[cfg(feature = "redaction")]
+            let overrides = overrides.read_redaction_findings_stdin(false)?;
 
             let mut config = load_config(config_path, !no_config_discovery)?;
             apply_json_overrides(&mut config, config_json, config_json_base64)?;
@@ -1197,6 +1201,23 @@ mod feature_profile_tests {
     #[test]
     fn url_ingestion_exposes_url_flag() {
         assert!(command_arg_ids("extract").iter().any(|id| id == "url"));
+    }
+
+    #[cfg(feature = "redaction")]
+    #[test]
+    fn redaction_exposes_redaction_findings_flag() {
+        for command in ["extract", "batch"] {
+            assert!(
+                command_arg_ids(command).iter().any(|id| id == "redaction_findings"),
+                "missing --redaction-findings on {command}"
+            );
+        }
+    }
+
+    #[cfg(not(feature = "redaction"))]
+    #[test]
+    fn lean_profile_omits_redaction_findings_flag() {
+        assert!(!command_arg_ids("extract").iter().any(|id| id == "redaction_findings"));
     }
 
     #[cfg(not(feature = "ocr-surface"))]

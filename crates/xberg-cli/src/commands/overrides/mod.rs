@@ -6,8 +6,8 @@
 //!
 //! The struct and its `validate`/`apply` entry points stay here; the field-by-field
 //! validation and mutation logic lives in one submodule per CLI-flag domain (`ocr`,
-//! `chunking`, `analysis`, `layout`, `pdf`, `html`, `output`, `general`, `llm`), each
-//! adding its own `impl ExtractionOverrides` block for the methods it owns.
+//! `chunking`, `analysis`, `layout`, `pdf`, `html`, `output`, `general`, `llm`, `redaction`),
+//! each adding its own `impl ExtractionOverrides` block for the methods it owns.
 //!
 //! `ExtractionOverrides` itself stays one flat struct rather than a composition of
 //! per-domain sub-structs behind `#[command(flatten)]`. Splitting it would not change
@@ -36,6 +36,8 @@ mod llm;
 mod ocr;
 mod output;
 mod pdf;
+#[cfg(feature = "redaction")]
+mod redaction;
 #[cfg(test)]
 mod tests;
 
@@ -376,6 +378,19 @@ pub struct ExtractionOverrides {
     /// Can be specified multiple times. Default: no comment filtering.
     #[arg(long, value_name = "PREFIX")]
     pub csv_comment_prefix: Vec<String>,
+
+    /// Redact the findings an external content-inspection engine (Presidio, AWS
+    /// Comprehend) reported over this document's text. Takes a JSON array or JSON
+    /// Lines file, or `-` to read them from stdin. Enables redaction if the config
+    /// does not already.
+    #[cfg(feature = "redaction")]
+    #[arg(long, value_name = "PATH|-")]
+    pub redaction_findings: Option<std::path::PathBuf>,
+
+    /// Findings read from stdin by `read_redaction_findings_stdin`.
+    #[cfg(feature = "redaction")]
+    #[arg(skip)]
+    pub(crate) redaction_findings_stdin: Option<Vec<xberg::core::config::redaction::ExternalRedactionFinding>>,
 }
 
 impl ExtractionOverrides {
@@ -435,6 +450,8 @@ impl ExtractionOverrides {
         self.apply_cache(config);
         self.apply_html_styled(config);
         self.apply_csv(config);
+        #[cfg(feature = "redaction")]
+        self.apply_redaction(config);
         if let Some(key) = resolved_api_key {
             apply_llm_api_key(config, &key);
         }

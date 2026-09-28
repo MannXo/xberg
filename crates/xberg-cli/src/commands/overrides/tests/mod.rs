@@ -33,4 +33,6 @@ mod ocr_json_precedence;
 mod ocr_precedence;
 mod output_and_concurrency;
 mod pdf_backend;
+#[cfg(feature = "redaction")]
+mod redaction;
 mod vlm;

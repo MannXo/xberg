@@ -6,8 +6,6 @@
 
 #![cfg(all(feature = "office", feature = "tokio-runtime"))]
 
-use std::io::{Cursor, Read, Write};
-
 use base64::Engine as _;
 use xberg::{ExtractInput, ExtractedDocument, ExtractionConfig, OutputFormat, extract};
 
@@ -32,19 +30,6 @@ fn decode_package(result: &ExtractedDocument) -> Vec<u8> {
     base64::engine::general_purpose::STANDARD
         .decode(&result.content)
         .expect("DOCX content should be base64")
-}
-
-/// Every part of the package, decompressed.
-fn package_parts(package: &[u8]) -> Vec<(String, String)> {
-    let mut archive = zip::ZipArchive::new(Cursor::new(package)).expect("the package should be a zip archive");
-    (0..archive.len())
-        .map(|index| {
-            let mut entry = archive.by_index(index).expect("every entry should be readable");
-            let mut xml = String::new();
-            entry.read_to_string(&mut xml).expect("every part should be UTF-8");
-            (entry.name().to_string(), xml)
-        })
-        .collect()
 }
 
 fn config(output_format: OutputFormat) -> ExtractionConfig {
@@ -87,6 +72,8 @@ async fn docx_output_round_trips_through_the_docx_extractor() {
 
 #[cfg(feature = "redaction")]
 mod redaction {
+    use std::io::{Cursor, Read};
+
     use super::*;
     use xberg::core::config::redaction::{RedactionConfig, RedactionTerm};
     use xberg::types::redaction::RedactionStrategy;
@@ -103,6 +90,19 @@ mod redaction {
             }),
             ..config(output_format)
         }
+    }
+
+    /// Every part of the package, decompressed.
+    fn package_parts(package: &[u8]) -> Vec<(String, String)> {
+        let mut archive = zip::ZipArchive::new(Cursor::new(package)).expect("the package should be a zip archive");
+        (0..archive.len())
+            .map(|index| {
+                let mut entry = archive.by_index(index).expect("every entry should be readable");
+                let mut xml = String::new();
+                entry.read_to_string(&mut xml).expect("every part should be UTF-8");
+                (entry.name().to_string(), xml)
+            })
+            .collect()
     }
 
     const PERSONNEL: &str = "# Review for Jane Doe
@@ -146,6 +146,8 @@ Contact Jane Doe through [her page](https://example.com/jdoe).
     #[tokio::test]
     #[serial_test::serial]
     async fn archive_members_keep_intact_packages_when_the_parent_is_redacted() {
+        use std::io::Write;
+
         let mut archive = zip::ZipWriter::new(Cursor::new(Vec::new()));
         archive
             .start_file("member.md", zip::write::SimpleFileOptions::default())

@@ -70,6 +70,30 @@ async fn docx_output_round_trips_through_the_docx_extractor() {
     assert_eq!(reread.content, source.content);
 }
 
+/// The PDF extractor recovers headings only when the output format asks for structure.
+#[cfg(feature = "pdf")]
+#[tokio::test]
+#[serial_test::serial]
+async fn a_pdf_converted_to_docx_keeps_the_headings_markdown_output_has() {
+    fn headings(markdown: &str) -> Vec<&str> {
+        markdown.lines().filter(|line| line.starts_with('#')).collect()
+    }
+
+    let path = format!("{}/../../test_documents/pdf/338298584.pdf", env!("CARGO_MANIFEST_DIR"));
+    let pdf = std::fs::read(&path).unwrap_or_else(|error| panic!("{path}: {error}; fetch the corpus first"));
+    let markdown = extract_one(&pdf, "application/pdf", &config(OutputFormat::Markdown)).await;
+    let rendered = extract_one(&pdf, "application/pdf", &config(docx())).await;
+    let reread = extract_one(
+        &decode_package(&rendered),
+        DOCX_MIME_TYPE,
+        &config(OutputFormat::Markdown),
+    )
+    .await;
+
+    assert!(!headings(&markdown.content).is_empty(), "{}", markdown.content);
+    assert_eq!(headings(&reread.content), headings(&markdown.content));
+}
+
 #[cfg(feature = "redaction")]
 mod redaction {
     use std::io::{Cursor, Read};

@@ -150,6 +150,15 @@ pub(crate) fn holds_encoded_package(output_format: Option<&str>, content: &str) 
     output_format == Some(DOCX_RENDERER_NAME) && content.starts_with(BASE64_ZIP_PREFIX)
 }
 
+/// Whether the built-in renderer `name` builds its output from the Markdown rendering.
+///
+/// An extractor that recovers headings and tables only for markup output formats has to
+/// recover them for these too, or the output carries none.
+#[allow(dead_code)]
+pub(crate) fn renders_from_markdown(name: &str) -> bool {
+    cfg!(feature = "office") && name == DOCX_RENDERER_NAME
+}
+
 /// Built-in DOCX renderer.
 ///
 /// Renders Markdown, which the redaction processor rewrites like any other text output,

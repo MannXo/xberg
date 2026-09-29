@@ -51,6 +51,7 @@ pub fn batch_command(
             fail_batch_errors(&envelope.errors)?;
         }
         WireFormat::Text => {
+            refuse_docx_text_output(&config)?;
             let output = run_batch_sync(&uris, file_configs_map.as_ref(), &config)?;
             let dir = output_dir.as_deref().unwrap_or(Path::new("."));
             let mut diagnostics = std::io::stderr().lock();
@@ -97,6 +98,18 @@ pub fn batch_command(
         }
     }
 
+    Ok(())
+}
+
+/// The batch text output joins documents under headers, which a binary DOCX cannot be.
+fn refuse_docx_text_output(config: &ExtractionConfig) -> Result<()> {
+    if super::requests_docx(config) {
+        anyhow::bail!(
+            "--content-format docx produces one binary document per file, which the text \
+             output cannot hold; use --format json, where each result's `content` is the \
+             base64-encoded DOCX"
+        );
+    }
     Ok(())
 }
 

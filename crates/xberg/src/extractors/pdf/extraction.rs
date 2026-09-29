@@ -62,8 +62,8 @@ fn effective_layout_acceleration<'a>(
 /// and fall back to plain text during derivation
 /// (`core/pipeline/format.rs`'s `custom_fallback_to_plain`). `DocTags` is a real,
 /// always-registered built-in renderer that needs the same geometry and headings
-/// as Markdown/Djot/HTML, so it gets its own explicit arm instead. So does a
-/// built-in binary format such as DOCX, which is built from the Markdown rendering.
+/// as Markdown/Djot/HTML, so it gets its own explicit arm instead. So do the
+/// built-in binary formats, DOCX and PDF, which are built from the Markdown rendering.
 ///
 /// `include_document_structure` triggers it directly (GH#1668): a caller who set
 /// only that flag, with `output_format` left at its `Plain` default, used to get
@@ -1209,6 +1209,13 @@ mod tests {
     #[test]
     fn should_trigger_structured_extraction_for_docx_format() {
         let output_format = OutputFormat::Custom("docx".to_string());
+        assert!(needs_structured_extraction(false, false, &output_format, false, false));
+    }
+
+    /// PDF output is laid out from the Markdown rendering too.
+    #[test]
+    fn should_trigger_structured_extraction_for_pdf_format() {
+        let output_format = OutputFormat::Custom("pdf".to_string());
         assert!(needs_structured_extraction(false, false, &output_format, false, false));
     }
 

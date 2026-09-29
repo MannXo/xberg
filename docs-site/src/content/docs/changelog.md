@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **(rendering): `output_format = "docx"` returns the document as a Word file.** `content` holds the `.docx` package base64-encoded and `metadata.output_format` reads `"docx"`; the CLI's `--content-format docx` writes the file itself to stdout. The package is built from the Markdown rendering after every post-processor has run, so redaction removes a term from the Word file exactly as it does from Markdown output. Headings, paragraphs, emphasis, links, nested lists, tables and code blocks carry over; images are not embedded, and chunks describe the Markdown the file was built from. Requires the `office` feature. (GH#1942)
+- **(rendering): `output_format = "pdf"` returns the document as a PDF file.** `content` holds the PDF base64-encoded and `metadata.output_format` reads `"pdf"`; the CLI's `--content-format pdf` writes the file itself to stdout. The PDF is laid out from the Markdown rendering after every post-processor has run, so redaction removes a term from it exactly as it does from Markdown output. Text stays selectable and extractable: it is set in an embedded subset of DejaVu Sans with a `ToUnicode` map, and code in the standard Courier faces. Headings (also listed in the PDF outline), emphasis, links, nested lists, tables and code blocks carry over; images are not embedded, and characters DejaVu Sans has no glyph for, such as CJK text, draw as boxes but still extract. Requires the `pdf` feature. (GH#1943)
 
 ## [1.3.0] - 2026-09-28
 

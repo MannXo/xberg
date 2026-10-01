@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **(docx): a table, text box or image after a nested list no longer ends up inside the list.** These blocks closed only the innermost list level and then stopped tracking the rest, so after a list two or more levels deep the block and the content after it rendered under the last list item. They now close every open level, as headings and paragraphs already did. (GH#2035)
+
 ## [1.3.2] - 2026-10-01
 
 ### Added

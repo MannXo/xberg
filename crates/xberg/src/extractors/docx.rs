@@ -298,8 +298,11 @@ fn build_internal_document(
             }
             crate::extraction::docx::parser::DocumentElement::Table(idx) => {
                 if current_list_numbering_id.is_some() {
-                    builder.end_list();
+                    for _ in 0..open_list_count {
+                        builder.end_list();
+                    }
                     current_list_numbering_id = None;
+                    open_list_count = 0;
                 }
                 let table = &doc.tables[*idx];
                 if let Some(ref props) = table.properties
@@ -325,8 +328,11 @@ fn build_internal_document(
                     && !textbox_text.trim().is_empty()
                 {
                     if current_list_numbering_id.is_some() {
-                        builder.end_list();
+                        for _ in 0..open_list_count {
+                            builder.end_list();
+                        }
                         current_list_numbering_id = None;
+                        open_list_count = 0;
                     }
                     builder.push_paragraph(textbox_text, vec![], Some(current_page), None);
                 }
@@ -340,8 +346,11 @@ fn build_internal_document(
                 }
 
                 if current_list_numbering_id.is_some() {
-                    builder.end_list();
+                    for _ in 0..open_list_count {
+                        builder.end_list();
+                    }
                     current_list_numbering_id = None;
+                    open_list_count = 0;
                 }
                 let description = drawing_alt_text(drawing);
 
@@ -2181,6 +2190,95 @@ mod tests {
             .count();
         let paragraphs = kinds.iter().filter(|k| matches!(k, ElementKind::Paragraph)).count();
         assert_eq!((list_starts, list_items, paragraphs), (1, 3, 0), "elements: {kinds:?}");
+    }
+
+    /// Extracts `block` placed between a two-level list and a trailing paragraph, and
+    /// asserts that the list is fully closed before `block` (GH#2035).
+    async fn assert_block_after_nested_list_is_top_level(block: &str, inject_placeholders: bool) {
+        use crate::types::internal::ElementKind;
+        let document_xml = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+            xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+            xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>
+  <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>Outer</w:t></w:r></w:p>
+  <w:p><w:pPr><w:numPr><w:ilvl w:val="1"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>Inner</w:t></w:r></w:p>
+  {block}
+  <w:p><w:r><w:t>After</w:t></w:r></w:p>
+</w:body></w:document>"#
+        );
+        let rels_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>
+</Relationships>"#;
+        let data = build_test_docx_with_parts(&document_xml, None, None, None, None, None, Some(rels_xml));
+        let config = ExtractionConfig {
+            images: Some(ImageExtractionConfig {
+                extract_images: false,
+                inject_placeholders,
+                ..Default::default()
+            }),
+            include_document_structure: true,
+            ..Default::default()
+        };
+        let internal_doc = DocxExtractor::new()
+            .extract_content(
+                &data,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                &config,
+            )
+            .await
+            .unwrap();
+
+        let elements = &internal_doc.elements;
+        let starts = elements
+            .iter()
+            .filter(|e| matches!(e.kind, ElementKind::ListStart { .. }))
+            .count();
+        let ends = elements
+            .iter()
+            .filter(|e| matches!(e.kind, ElementKind::ListEnd))
+            .count();
+        assert_eq!((starts, ends), (2, 2), "elements: {elements:?}");
+
+        let inner = elements.iter().position(|e| e.text == "Inner").unwrap();
+        let after_list: Vec<_> = elements[inner + 1..]
+            .iter()
+            .filter(|e| !matches!(e.kind, ElementKind::ListEnd))
+            .collect();
+        assert!(after_list.len() >= 2, "elements: {elements:?}");
+        assert!(after_list.iter().all(|e| e.depth == 0), "elements: {elements:?}");
+    }
+
+    #[tokio::test]
+    async fn table_after_nested_list_is_not_inside_the_list() {
+        let table = r#"<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Region</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
+        assert_block_after_nested_list_is_top_level(table, false).await;
+    }
+
+    #[tokio::test]
+    async fn text_box_after_nested_list_is_not_inside_the_list() {
+        let text_box = r#"<w:p><w:r><w:drawing><wp:inline>
+  <wp:extent cx="100000" cy="100000"/><wp:docPr id="2" name="Text Box 1"/>
+  <a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+    <wps:wsp><wps:txbx><w:txbxContent><w:p><w:r><w:t>Boxed</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp>
+  </a:graphicData></a:graphic>
+</wp:inline></w:drawing></w:r></w:p>"#;
+        assert_block_after_nested_list_is_top_level(text_box, false).await;
+    }
+
+    #[tokio::test]
+    async fn image_after_nested_list_is_not_inside_the_list() {
+        let image = r#"<w:p><w:r><w:drawing><wp:inline>
+  <wp:extent cx="914400" cy="457200"/><wp:docPr id="1" name="Chart"/>
+  <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+    <pic:pic><pic:blipFill><a:blip r:embed="rId5"/></pic:blipFill></pic:pic>
+  </a:graphicData></a:graphic>
+</wp:inline></w:drawing></w:r></w:p>"#;
+        assert_block_after_nested_list_is_top_level(image, true).await;
     }
 
     #[tokio::test]

@@ -535,6 +535,8 @@ pub struct TesseractConfig {
     /// Controls how images are preprocessed before OCR. Can significantly
     /// improve quality for scanned documents or low-quality images.
     #[serde(skip_serializing_if = "Option::is_none")]
+    // A bare `default` suppresses the `null` the container's serde default would advertise. ~keep
+    #[cfg_attr(feature = "api", schema(nullable = false, default))]
     pub preprocessing: Option<ImagePreprocessingConfig>,
 
     /// Enable automatic table detection and reconstruction

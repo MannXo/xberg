@@ -168,11 +168,13 @@ pub struct KeywordConfig {
     /// YAKE-specific tuning parameters.
     #[cfg(feature = "keywords-yake")]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "api", schema(nullable = false))]
     pub yake_params: Option<YakeParams>,
 
     /// RAKE-specific tuning parameters.
     #[cfg(feature = "keywords-rake")]
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "api", schema(nullable = false))]
     pub rake_params: Option<RakeParams>,
 }
 

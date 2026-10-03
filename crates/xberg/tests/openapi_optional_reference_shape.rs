@@ -91,6 +91,52 @@ fn should_emit_a_direct_reference_when_the_serde_contract_omits_none() {
     }
 }
 
+/// Asserts the omission-only shape on a type's own schema, for config types the document does not
+/// register but downstream specs that embed them do (GH#2041).
+fn assert_omission_only_reference<T>(field: &str, target: &str)
+where
+    T: utoipa::ToSchema + serde::Serialize + Default,
+{
+    let schema = T::name();
+    let wire = serde_json::to_value(T::default()).expect("a default config must serialise");
+    assert!(
+        wire.get(field).is_none(),
+        "{schema}.{field} must be absent, not null, when unset"
+    );
+
+    let definition = serde_json::to_value(T::schema()).expect("a derived schema must serialise");
+    let property = definition
+        .pointer(&format!("/properties/{field}"))
+        .unwrap_or_else(|| panic!("{schema}.{field} is absent from its schema"));
+    assert!(
+        property.get("oneOf").is_none(),
+        "{schema}.{field} is omission-only and must not be a null union, got {property}"
+    );
+    assert_eq!(
+        property.get("$ref").and_then(Value::as_str),
+        Some(format!("#/components/schemas/{target}").as_str()),
+        "{schema}.{field} must be a direct reference to {target}, got {property}"
+    );
+    assert!(
+        property.get("default").is_none(),
+        "{schema}.{field} must not advertise a default, got {property}"
+    );
+    let required = definition.get("required").and_then(Value::as_array);
+    assert!(
+        !required.is_some_and(|names| names.iter().any(|name| name.as_str() == Some(field))),
+        "{schema}.{field} must stay out of `required`"
+    );
+}
+
+#[test]
+fn should_emit_a_direct_reference_for_omission_only_config_fields() {
+    assert_omission_only_reference::<xberg::types::TesseractConfig>("preprocessing", "ImagePreprocessingConfig");
+    #[cfg(feature = "keywords-yake")]
+    assert_omission_only_reference::<xberg::KeywordConfig>("yake_params", "YakeParams");
+    #[cfg(feature = "keywords-rake")]
+    assert_omission_only_reference::<xberg::KeywordConfig>("rake_params", "RakeParams");
+}
+
 #[test]
 fn should_carry_the_description_on_the_property_rather_than_a_union_branch() {
     let spec = spec();

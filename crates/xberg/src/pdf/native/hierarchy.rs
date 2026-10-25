@@ -321,14 +321,9 @@ fn two_up_gutter(spans: &[xberg_native_pdf::layout::TextSpan], page_width: f32, 
         return None;
     }
     let usable: Vec<_> = spans.iter().filter(|span| is_usable_span(span)).collect();
-    let (content_min, content_max) = content_bounds(&usable)?;
-    let content_width = content_max - content_min;
-    let body: Vec<_> = usable
-        .iter()
-        .copied()
-        .filter(|span| span.bbox.width <= content_width * COLUMN_BRIDGE_FRACTION)
-        .collect();
-    let gutter_x = detect_gutter_x(&body)?;
+    // `detect_gutter_x` leaves out lines wide enough to bridge a gutter, and any such line
+    // that does cross this one fails the corridor check below. ~keep
+    let gutter_x = detect_gutter_x(&usable)?;
     if (gutter_x - page_width * 0.5).abs() > page_width * MAX_TWO_UP_GUTTER_OFFSET_FRACTION {
         return None;
     }
@@ -373,11 +368,7 @@ fn two_up_gutter(spans: &[xberg_native_pdf::layout::TextSpan], page_width: f32, 
 /// every line on both sides still sits on one row grid. Two pages each keep their own
 /// leading and phase. ~keep
 fn shares_row_grid(grid: &[f32], other: &[f32]) -> bool {
-    let mut leadings: Vec<f32> = grid
-        .windows(2)
-        .map(|pair| (pair[0] - pair[1]).abs())
-        .filter(|&leading| leading > TWO_UP_ROW_GRID_TOLERANCE_PTS)
-        .collect();
+    let mut leadings: Vec<f32> = grid.windows(2).map(|pair| (pair[0] - pair[1]).abs()).collect();
     if leadings.len() < 2 || other.is_empty() {
         return true;
     }
@@ -408,6 +399,8 @@ fn reorder_page_reading_order(
     let (mut left, mut right): (Vec<_>, Vec<_>) = spans
         .drain(..)
         .partition(|span| span.bbox.x + span.bbox.width * 0.5 < gutter_x);
+    // Both halves keep sheet coordinates. The single-page path reads `page_width` only as a
+    // scale for its gutter and furniture fractions, so each half passes its own width. ~keep
     reorder_single_page_reading_order(&mut left, gutter_x, page_height, page_index);
     reorder_single_page_reading_order(&mut right, page_width - gutter_x, page_height, page_index);
     spans.extend(left);
@@ -1946,6 +1939,132 @@ mod tests {
         );
     }
 
+    /// A one-page 842 x 595 Helvetica PDF set like the GH#2227 sheet: code beside notes
+    /// on the left page, body text on the right one, written in one top-to-bottom
+    /// interleaved content stream. ~keep
+    fn gh2227_two_up_sheet_pdf() -> Vec<u8> {
+        let mut stream = String::new();
+        let mut text = |size: f32, x: f32, y: f32, content: &str| {
+            stream.push_str(&format!("BT /F1 {size:.1} Tf {x:.1} {y:.1} Td ({content}) Tj ET\n"));
+        };
+        for row in 0..12 {
+            let y = 460.0 - row as f32 * 11.9;
+            text(
+                9.9,
+                484.0,
+                y,
+                &format!("Encapsulation keeps state behind methods R{row}"),
+            );
+            if row < 10 {
+                let y = 455.0 - (row % 5) as f32 * 6.8 - (row / 5) as f32 * 200.0;
+                text(6.0, 104.0, y, &format!("s.age = {row};"));
+                text(6.3, 202.0, y, &format!("Fields hold the state L{row}"));
+            }
+        }
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Contents 4 0 R \
+             /Resources << /Font << /F1 5 0 R >> >> >>"
+                .to_string(),
+            format!("<< /Length {} >>\nstream\n{stream}endstream", stream.len()),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string(),
+        ];
+        let mut pdf = b"%PDF-1.4\n".to_vec();
+        let mut offsets = Vec::new();
+        for (index, object) in objects.iter().enumerate() {
+            offsets.push(pdf.len());
+            pdf.extend_from_slice(format!("{} 0 obj\n{object}\nendobj\n", index + 1).as_bytes());
+        }
+        let xref = pdf.len();
+        pdf.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes());
+        for offset in offsets {
+            pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+        }
+        pdf.extend_from_slice(
+            format!(
+                "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+                objects.len() + 1
+            )
+            .as_bytes(),
+        );
+        pdf
+    }
+
+    /// The majority in `shares_row_grid`: a third of the lines on a 10pt grid is chance, two
+    /// thirds is a shared grid. ~keep
+    #[test]
+    fn row_grid_is_shared_only_by_a_majority_of_lines_gh2227() {
+        let grid: Vec<f32> = (0..10).map(|row| 500.0 - row as f32 * 10.0).collect();
+        assert!(
+            !super::shares_row_grid(&grid, &[480.0, 473.0, 466.0]),
+            "one line in three"
+        );
+        assert!(
+            super::shares_row_grid(&grid, &[480.0, 470.0, 466.0]),
+            "two lines in three"
+        );
+    }
+
+    /// A page with two lines gives no leading to infer a row grid from, so the sheet is
+    /// left to the single-page path rather than split on a guess. ~keep
+    #[test]
+    fn page_too_short_to_show_a_row_grid_is_not_two_up_gh2227() {
+        let mut spans: Vec<TextSpan> = gh2227_two_up_sheet()
+            .into_iter()
+            .filter(|span| span.bbox.x > GH2227_PAGE_WIDTH / 2.0)
+            .collect();
+        spans.push(sized_span(
+            "Fields hold the state of an object",
+            202.0,
+            455.0,
+            100.0,
+            6.3,
+        ));
+        spans.push(sized_span("and methods change that state", 202.0, 449.3, 100.0, 6.3));
+        assert_eq!(
+            super::two_up_gutter(&spans, GH2227_PAGE_WIDTH, GH2227_PAGE_HEIGHT),
+            None
+        );
+    }
+
+    #[test]
+    fn extraction_reads_the_left_page_of_a_two_up_sheet_first_gh2227() {
+        let bytes = gh2227_two_up_sheet_pdf();
+        let mut document = NativeDocument::open_bytes(&bytes).expect("two-up sheet must parse");
+        let segments = super::extract_segments_from_page(&mut document, 0, super::ArtifactRetention::default())
+            .expect("two-up sheet must extract");
+        let text = segments
+            .iter()
+            .map(|segment| segment.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let labels: Vec<char> = text
+            .split_whitespace()
+            .filter(|word| {
+                (word.starts_with('L') || word.starts_with('R'))
+                    && word.len() > 1
+                    && word[1..].chars().all(|digit| digit.is_ascii_digit())
+            })
+            .filter_map(|word| word.chars().next())
+            .collect();
+        assert_eq!(
+            labels.iter().filter(|&&c| c == 'L').count(),
+            10,
+            "every left line extracted: {labels:?}"
+        );
+        assert_eq!(
+            labels.iter().filter(|&&c| c == 'R').count(),
+            12,
+            "every right line extracted: {labels:?}"
+        );
+        let first_right = labels.iter().position(|&c| c == 'R').expect("right page present");
+        assert!(
+            labels[first_right..].iter().all(|&c| c == 'R'),
+            "extraction must read the whole left page before the right page, got {labels:?}"
+        );
+    }
+
     #[test]
     fn element_path_reads_the_left_page_before_the_right_page_gh2227() {
         let mut spans = gh2227_two_up_sheet();
@@ -1979,9 +2098,10 @@ mod tests {
         }
     }
 
-    /// Two landscape tables each table signal catches alone: rows that alternate sides
-    /// pair one row in eight, yet every line sits on one row grid; wrapped left cells
-    /// break the grid, yet every row starts on a shared baseline. ~keep
+    /// Landscape tables each table signal catches alone: rows that alternate sides pair one
+    /// row in eight, yet every line sits on one row grid (mirrored, so each direction of the
+    /// grid check is needed once); wrapped left cells break the grid, yet every row starts
+    /// on a shared baseline. ~keep
     #[test]
     fn alternating_and_wrapped_landscape_tables_are_not_two_up_gh2227() {
         let mut alternating = Vec::new();
@@ -1994,6 +2114,14 @@ mod tests {
                 alternating.push(text_span("Operating expense growth", 544.0, y, 198.0));
             }
         }
+        let mirrored: Vec<TextSpan> = alternating
+            .iter()
+            .map(|span| {
+                let mut span = span.clone();
+                span.bbox.x = GH2227_PAGE_WIDTH - span.bbox.x - span.bbox.width;
+                span
+            })
+            .collect();
         let mut wrapped = Vec::new();
         for row in 0..6 {
             let y = 500.0 - row as f32 * 30.0;
@@ -2001,7 +2129,11 @@ mod tests {
             wrapped.push(text_span("every branch office today", 50.0, y - 11.0, 300.0));
             wrapped.push(text_span("Operating expense growth", 470.0, y, 300.0));
         }
-        for (name, spans) in [("alternating", alternating), ("wrapped", wrapped)] {
+        for (name, spans) in [
+            ("alternating", alternating),
+            ("alternating, mirrored", mirrored),
+            ("wrapped", wrapped),
+        ] {
             assert_eq!(
                 super::two_up_gutter(&spans, GH2227_PAGE_WIDTH, GH2227_PAGE_HEIGHT),
                 None,
